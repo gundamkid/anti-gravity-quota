@@ -121,7 +121,7 @@ module github.com/gundamkid/anti-gravity-quota
 require (
     github.com/spf13/cobra v1.8.0       // CLI framework
     github.com/fatih/color v1.16.0      // Colored output
-    github.com/olekukonko/tablewriter v0.0.5  // Table display
+    github.com/jedib0t/go-pretty/v6 v6.5.4 // Table display
     golang.org/x/oauth2 v0.16.0         // OAuth2 client
 )
 ```
@@ -141,10 +141,6 @@ const (
     
     // Cloud Code OAuth client (from antigravity extension)
     clientID     = "764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com"
-    
-    redirectPort = 8085
-    redirectURI  = "http://localhost:8085/callback"
-    
     scopes = "openid email profile https://www.googleapis.com/auth/cloud-platform"
 )
 
@@ -318,21 +314,21 @@ func GetConfigDir() string {
 ## ✅ Implementation Checklist
 
 ### Core Features (MVP)
-- [ ] OAuth2 login flow with Google
-- [ ] Token storage and refresh
-- [ ] Cloud Code API client
-- [ ] Quota fetching for all models
-- [ ] Pretty table output in terminal
+- [x] OAuth2 login flow with Google
+- [x] Token storage and refresh
+- [x] Cloud Code API client
+- [x] Quota fetching for all models
+- [x] Pretty table output in terminal
 
 ### Commands
-- [ ] `ag-quota` / `ag-quota quota` - Show all model quotas
-- [ ] `ag-quota login` - Start OAuth login flow
-- [ ] `ag-quota status` - Show auth status
-- [ ] `ag-quota logout` - Clear stored tokens
+- [x] `ag-quota` / `ag-quota quota` - Show all model quotas
+- [x] `ag-quota login` - Start OAuth login flow
+- [x] `ag-quota status` - Show auth status
+- [x] `ag-quota logout` - Clear stored tokens
 
 ### Nice to Have (Future)
 - [ ] Multi-account support
-- [ ] JSON output option (`--json`)
+- [x] JSON output option (`--json`)
 - [ ] Watch mode (`--watch`)
 - [ ] Cache support for offline viewing
 
