@@ -195,8 +195,6 @@ Configuration files are stored in the following locations:
 - Go 1.21+ (for building from source)
 - Internet connection
 - Google account with Anti-Gravity (Claude Code) access
-- Port 8085 available for OAuth callback during login
-
 ## Troubleshooting
 
 ### "Not logged in" error
@@ -209,14 +207,6 @@ Tokens are automatically refreshed. If you see auth errors, try:
 ```bash
 ag-quota logout
 ag-quota login
-```
-
-### "Port 8085 already in use"
-
-The OAuth callback server requires port 8085. Ensure no other application is using it, or kill the process:
-```bash
-# Linux/macOS
-lsof -ti:8085 | xargs kill -9
 ```
 
 ### API errors or rate limiting
