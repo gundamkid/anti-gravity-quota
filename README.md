@@ -1,56 +1,93 @@
-# Anti-Gravity Quota - CLI Tool
+# 🚀 AG-Quota
 
-CLI tool nhẹ, nhanh để quản lý và hiển thị quota của các AI models trong Antigravity, hỗ trợ nhiều Google accounts.
+A lightweight CLI tool to check your Anti-Gravity AI model quota and usage.
 
-## Tính năng chính
+## Features
 
-- 📊 **Theo dõi quota real-time**: Xem quota đã sử dụng, còn lại, và thời gian refresh
-- 👥 **Multi-account**: Quản lý nhiều Google accounts
-- 🚀 **Nhanh & Nhẹ**: Viết bằng Go, binary ~5MB, khởi động tức thì
-- 🖥️ **Cross-platform**: Hỗ trợ Linux, macOS, Windows
+- ✅ **Check Quota** - View quota for all AI models (Claude, Gemini)
+- 🔐 **Cloud Login** - Authenticate via Google OAuth
+- 📊 **Pretty Output** - Colored tables with quota details
+- ⚡ **Fast & Simple** - Single binary, no dependencies
 
-## Cài đặt
-
-```bash
-# Từ source
-git clone https://github.com/your-username/anti-gravity-quota.git
-cd anti-gravity-quota
-go build -o anti-gravity-quota ./cmd/anti-gravity-quota
-
-# Di chuyển vào PATH
-sudo mv anti-gravity-quota /usr/local/bin/
-```
-
-## Sử dụng nhanh
+## Installation
 
 ```bash
-# Xem quota của account hiện tại
-anti-gravity-quota
+# Build from source
+go build -o ag-quota ./cmd/ag-quota
 
-# Xem quota của tất cả accounts
-anti-gravity-quota --all
-
-# Xem dạng JSON
-anti-gravity-quota --json
-
-# Xem compact (1 dòng)
-anti-gravity-quota -c
-
-# Watch mode (auto refresh)
-anti-gravity-quota --watch
+# Or install directly
+go install github.com/gundamkid/anti-gravity-quota/cmd/ag-quota@latest
 ```
 
-## Yêu cầu
+## Quick Start
 
-- Antigravity IDE đang chạy (để detect Language Server)
-- Go 1.21+ (nếu build từ source)
+```bash
+# Login with Google account
+ag-quota login
 
-## Tài liệu
+# Check quota for all models
+ag-quota
 
-- [Hướng dẫn sử dụng](docs/user_guide.md)
-- [Tài liệu kỹ thuật](docs/technical.md)
-- [Implementation Plan](docs/implementation/implementation_plan.md)
+# Check authentication status
+ag-quota status
+
+# Logout
+ag-quota logout
+```
+
+## Usage
+
+### Check Quota
+
+```bash
+$ ag-quota
+
+╔══════════════════════════════════════════════════════════╗
+║           Anti-Gravity Quota Status                       ║
+╠══════════════════════════════════════════════════════════╣
+║  Account: user@gmail.com                                  ║
+╠══════════════════════════════════════════════════════════╣
+║  MODEL              │ QUOTA   │ RESET IN   │ STATUS      ║
+╠══════════════════════════════════════════════════════════╣
+║  Claude 4 Sonnet    │ 85%     │ 4h 23m     │ ✓ OK        ║
+║  Claude 4 Opus      │ 100%    │ 5h 0m      │ ✓ OK        ║
+║  Gemini 3 Flash     │ 0%      │ 2h 15m     │ ✗ EXHAUSTED ║
+║  Gemini 3 Pro       │ 50%     │ 3h 45m     │ ✓ OK        ║
+╚══════════════════════════════════════════════════════════╝
+```
+
+### JSON Output
+
+```bash
+ag-quota --json
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `ag-quota` | Check quota (default) |
+| `ag-quota login` | Login with Google |
+| `ag-quota status` | Check auth status |
+| `ag-quota logout` | Clear stored tokens |
+| `ag-quota --help` | Show help |
+
+## Configuration
+
+Config files are stored in:
+- **Linux**: `~/.config/ag-quota/`
+- **macOS**: `~/Library/Application Support/ag-quota/`
+
+## Requirements
+
+- Go 1.21+ (for building)
+- Internet connection (for API calls)
+- Google account with Anti-Gravity access
+
+## Credits
+
+Inspired by [antigravity-usage](https://github.com/skainguyen1412/antigravity-usage) by skainguyen1412.
 
 ## License
 
-MIT License
+MIT

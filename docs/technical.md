@@ -1,260 +1,270 @@
-# Tài liệu Kỹ thuật - Anti-Gravity Quota
+# Anti-Gravity Quota CLI - Technical Documentation
 
-## Tổng quan Kiến trúc
+## 📡 API Specification
 
-**Anti-Gravity Quota** là CLI tool được viết bằng Go, thiết kế theo nguyên tắc **đơn giản, nhanh, và modular**.
+### Base URLs
 
+| Environment | URL |
+|-------------|-----|
+| Production | `https://cloudcode-pa.googleapis.com` |
+| Sandbox | `https://daily-cloudcode-pa.sandbox.googleapis.com` |
+
+### Authentication
+
+**OAuth2 Configuration:**
 ```
-anti-gravity-quota/
-├── cmd/
-│   └── anti-gravity-quota/
-│       └── main.go              # Entry point, CLI commands
-├── internal/
-│   ├── detector/
-│   │   └── process.go           # Process detection
-│   ├── client/
-│   │   └── quota.go             # API client
-│   ├── config/
-│   │   └── accounts.go          # Configuration management
-│   └── display/
-│       └── table.go             # Terminal output
-├── docs/
-│   ├── technical.md             # Tài liệu này
-│   ├── user_guide.md            # Hướng dẫn sử dụng
-│   └── implementation/
-│       ├── task.md              # Task tracking
-│       └── implementation_plan.md
-├── go.mod
-├── go.sum
-└── README.md
+Authorization URL: https://accounts.google.com/o/oauth2/v2/auth
+Token URL: https://oauth2.googleapis.com/token
+Client ID: 764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com
+Redirect URI: http://localhost:8085/callback
+Scopes: openid email profile https://www.googleapis.com/auth/cloud-platform
+```
+
+**Request Headers:**
+```http
+Authorization: Bearer <access_token>
+Content-Type: application/json
+User-Agent: antigravity
 ```
 
 ---
 
-## Cơ chế hoạt động
+## 📋 API Endpoints
 
-### 1. Process Detection
+### 1. Load Code Assist
 
-**Anti-Gravity Quota** hoạt động bằng cách phát hiện process của Antigravity Language Server đang chạy trên máy.
+Lấy thông tin project và trạng thái code assist.
 
-```mermaid
-flowchart LR
-    A[Start] --> B[Scan Processes]
-    B --> C{Found LS?}
-    C -->|Yes| D[Extract Port]
-    C -->|No| E[Error: AG not running]
-    D --> F[Get Auth Token]
-    F --> G[Call GetUserStatus API]
-    G --> H[Display Results]
+**Endpoint:** `POST /v1internal:loadCodeAssist`
+
+**Request Body:**
+```json
+{
+  "metadata": {
+    "ideType": "ANTIGRAVITY",
+    "platform": "PLATFORM_UNSPECIFIED",
+    "pluginType": "GEMINI"
+  }
+}
 ```
 
-**Linux Implementation:**
-```go
-// Scan /proc để tìm process
-func findAntigravityProcess() (*ProcessInfo, error) {
-    files, _ := os.ReadDir("/proc")
-    for _, f := range files {
-        if !f.IsDir() {
-            continue
-        }
-        pid := f.Name()
-        cmdline, _ := os.ReadFile(fmt.Sprintf("/proc/%s/cmdline", pid))
-        if strings.Contains(string(cmdline), "antigravity") {
-            return parseProcessInfo(pid)
-        }
+**Response:**
+```json
+{
+  "codeAssistEnabled": true,
+  "planInfo": {
+    "monthlyPromptCredits": 1000,
+    "planType": "FREE"
+  },
+  "availablePromptCredits": 850,
+  "cloudaicompanionProject": "projects/123456789",
+  "currentTier": {
+    "id": "free-tier",
+    "name": "Free",
+    "description": "Free tier"
+  },
+  "allowedTiers": [
+    {"id": "free-tier", "isDefault": true}
+  ]
+}
+```
+
+---
+
+### 2. Fetch Available Models
+
+Lấy danh sách models với thông tin quota.
+
+**Endpoint:** `POST /v1internal:fetchAvailableModels`
+
+**Request Body:**
+```json
+{
+  "project": "projects/123456789"
+}
+```
+
+**Response:**
+```json
+{
+  "models": {
+    "claude-sonnet-4-5": {
+      "displayName": "Claude 4 Sonnet",
+      "model": "claude-sonnet-4-5",
+      "label": "Claude 4 Sonnet",
+      "quotaInfo": {
+        "remainingFraction": 0.85,
+        "resetTime": "2026-01-26T12:00:00Z",
+        "isExhausted": false
+      },
+      "maxTokens": 64000,
+      "recommended": true,
+      "supportsImages": true,
+      "supportsThinking": false,
+      "modelProvider": "claude"
+    },
+    "gemini-3-flash": {
+      "displayName": "Gemini 3 Flash",
+      "model": "gemini-3-flash",
+      "label": "Gemini 3 Flash",
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-01-26T14:00:00Z",
+        "isExhausted": false
+      },
+      "modelProvider": "google"
     }
-    return nil, ErrNotFound
+  },
+  "defaultAgentModelId": "claude-sonnet-4-5"
 }
 ```
 
-### 2. Port Discovery
+---
 
-Sau khi tìm được process, tool xác định port mà Language Server đang listen:
+## 🔐 OAuth2 Flow
 
-```go
-// Đọc từ /proc/{pid}/fd để tìm listening sockets
-func discoverPort(pid string) (int, error) {
-    fdPath := fmt.Sprintf("/proc/%s/fd", pid)
-    // Scan file descriptors
-    // Parse socket info
-    // Return listening port
+### PKCE Flow (Proof Key for Code Exchange)
+
+```
+┌─────────┐                              ┌─────────────┐
+│   CLI   │                              │   Google    │
+└────┬────┘                              └──────┬──────┘
+     │                                          │
+     │ 1. Generate code_verifier (random)       │
+     │ 2. Generate code_challenge = SHA256(verifier)
+     │                                          │
+     │ 3. Open browser ────────────────────────>│
+     │    ?client_id=...                        │
+     │    &redirect_uri=localhost:8085          │
+     │    &code_challenge=...                   │
+     │    &code_challenge_method=S256           │
+     │    &scope=openid email profile...        │
+     │    &state=random                         │
+     │                                          │
+     │ 4. User logs in & consents               │
+     │                                          │
+     │<──────────── 5. Redirect to callback ────│
+     │    ?code=authorization_code              │
+     │    &state=random                         │
+     │                                          │
+     │ 6. Exchange code for tokens ────────────>│
+     │    POST /token                           │
+     │    code=...                              │
+     │    code_verifier=...                     │
+     │                                          │
+     │<──────────── 7. Return tokens ───────────│
+     │    access_token                          │
+     │    refresh_token                         │
+     │    expires_in                            │
+     │                                          │
+```
+
+### Token Refresh
+
+Khi access_token hết hạn (thường sau 1 giờ):
+
+```http
+POST https://oauth2.googleapis.com/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=refresh_token
+refresh_token=<refresh_token>
+client_id=<client_id>
+```
+
+---
+
+## 📁 Data Structures
+
+### Token Storage (`~/.config/ag-quota/token.json`)
+
+```json
+{
+  "access_token": "ya29.xxx...",
+  "refresh_token": "1//xxx...",
+  "expires_at": "2026-01-26T08:00:00Z",
+  "email": "user@gmail.com",
+  "project_id": "projects/123456789"
 }
 ```
 
-**Alternative:** Parse command line arguments của process, thường chứa `--port=XXXX`.
-
-### 3. Authentication
-
-Auth token được lấy từ file OAuth credentials:
+### Model Quota Info (Internal)
 
 ```go
-const (
-    OAuthCredsPath = "~/.gemini/oauth_creds.json"
-    GoogleAccountsPath = "~/.gemini/google_accounts.json"
-)
-
-type OAuthCreds struct {
-    AccessToken  string `json:"access_token"`
-    RefreshToken string `json:"refresh_token"`
-    ExpiresAt    int64  `json:"expires_at"`
-}
-```
-
-### 4. Quota API
-
-Gọi internal API của Language Server:
-
-```go
-func (c *Client) GetUserStatus() (*QuotaResponse, error) {
-    url := fmt.Sprintf("http://localhost:%d/GetUserStatus", c.port)
-    
-    req, _ := http.NewRequest("GET", url, nil)
-    req.Header.Set("Authorization", "Bearer " + c.token)
-    
-    resp, err := c.http.Do(req)
-    // Parse response
-}
-```
-
-**Response Structure:**
-```go
-type QuotaResponse struct {
-    Models []ModelQuota `json:"models"`
-}
-
 type ModelQuota struct {
-    Name       string    `json:"name"`
-    QuotaUsed  int64     `json:"quotaUsed"`
-    QuotaLimit int64     `json:"quotaLimit"`
-    ResetAt    time.Time `json:"resetAt"`
+    ModelID           string    // "claude-sonnet-4-5"
+    DisplayName       string    // "Claude 4 Sonnet"
+    Provider          string    // "claude" | "google"
+    RemainingFraction float64   // 0.0 - 1.0
+    ResetTime         time.Time // When quota resets
+    IsExhausted       bool      // true if quota = 0
 }
 ```
 
 ---
 
-## Data Models
+## ⚠️ Error Handling
 
-### Configuration
+### HTTP Status Codes
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| 401 | Unauthorized | Token expired, refresh or re-login |
+| 403 | Forbidden | Invalid token, re-login required |
+| 429 | Rate Limited | Retry with exponential backoff |
+| 5xx | Server Error | Retry after delay |
+
+### Retry Strategy
 
 ```go
-type Config struct {
-    Accounts []Account `yaml:"accounts"`
-    Display  Display   `yaml:"display"`
+// Exponential backoff với jitter
+func getBackoffDelay(attempt int) time.Duration {
+    base := 500 * math.Pow(2, float64(attempt-1))
+    jitter := rand.Float64() * 100
+    delay := math.Min(base+jitter, 4000)
+    return time.Duration(delay) * time.Millisecond
 }
 
-type Account struct {
-    Email    string `yaml:"email"`
-    Active   bool   `yaml:"active"`
-}
-
-type Display struct {
-    Format  string `yaml:"format"`  // table, json, compact
-    Refresh int    `yaml:"refresh"` // seconds
-}
-```
-
-**Config file location:** `~/.config/anti-gravity-quota/config.yaml`
-
-### Quota Info
-
-```go
-type QuotaInfo struct {
-    Model          string
-    Used           int64
-    Limit          int64
-    Remaining      int64
-    PercentageUsed float64
-    ResetTime      time.Time
-    TimeUntilReset time.Duration
-}
-
-func (q *QuotaInfo) PercentageRemaining() float64 {
-    return 100.0 - q.PercentageUsed
-}
-
-func (q *QuotaInfo) Status() string {
-    switch {
-    case q.PercentageRemaining() > 20:
-        return "healthy"
-    case q.PercentageRemaining() > 0:
-        return "low"
-    default:
-        return "exhausted"
-    }
-}
+// Max 3 attempts per request
+const MaxRetryAttempts = 3
 ```
 
 ---
 
-## Dependencies
+## 🔧 Configuration
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `github.com/spf13/cobra` | v1.8+ | CLI framework |
-| `github.com/charmbracelet/lipgloss` | v0.9+ | Terminal styling |
-| `github.com/shirou/gopsutil/v3` | v3.24+ | Cross-platform process detection |
-| `gopkg.in/yaml.v3` | v3.0+ | YAML config parsing |
-| `github.com/olekukonko/tablewriter` | v0.0.5 | Table formatting |
+### Config Directory
 
----
+| OS | Path |
+|----|------|
+| Linux | `~/.config/ag-quota/` |
+| macOS | `~/Library/Application Support/ag-quota/` |
+| Windows | `%APPDATA%\ag-quota\` |
 
-## Error Handling
+### Files
 
-```go
-var (
-    ErrAntigravityNotRunning = errors.New("antigravity language server not found")
-    ErrPortNotFound          = errors.New("could not determine language server port")
-    ErrAuthFailed            = errors.New("authentication failed")
-    ErrQuotaFetchFailed      = errors.New("failed to fetch quota information")
-)
-```
+| File | Description |
+|------|-------------|
+| `token.json` | OAuth tokens (chmod 600) |
+| `config.json` | User preferences (future) |
 
 ---
 
-## Performance Considerations
+## 🧪 Testing
 
-1. **Process scanning**: Cache process info, chỉ rescan khi cần
-2. **HTTP client**: Reuse connection, set reasonable timeout (5s)
-3. **Binary size**: Sử dụng `-ldflags="-s -w"` để strip debug info (~3-5MB)
+### Manual API Test
 
 ```bash
-# Build optimized
-go build -ldflags="-s -w" -o anti-gravity-quota ./cmd/anti-gravity-quota
+# Get access token first, then:
+curl -X POST https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"metadata":{"ideType":"ANTIGRAVITY","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}}'
 ```
 
----
+### Expected Models
 
-## Testing Strategy
-
-### Unit Tests
-```go
-func TestProcessDetection(t *testing.T) {
-    // Mock /proc filesystem
-}
-
-func TestQuotaParser(t *testing.T) {
-    // Test JSON parsing
-}
-```
-
-### Integration Tests
-```go
-func TestLiveQuotaFetch(t *testing.T) {
-    if os.Getenv("ANTIGRAVITY_RUNNING") != "1" {
-        t.Skip("Antigravity not running")
-    }
-    // Test real API call
-}
-```
-
----
-
-## Security Notes
-
-- Auth tokens được đọc từ local files, không được log hoặc expose
-- Không gửi data ra ngoài, chỉ communicate với localhost
-- Config files nên có permission 600
-
-```bash
-chmod 600 ~/.config/anti-gravity-quota/config.yaml
-```
+Based on antigravity-usage source:
+- `claude-sonnet-4-5` → Claude family
+- `gemini-3-flash` → Gemini flash quota group
+- `gemini-3-pro-low` → Gemini pro quota group
