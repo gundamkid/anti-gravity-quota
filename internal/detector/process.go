@@ -2,12 +2,12 @@ package detector
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/shirou/gopsutil/v3/process"
-	"github.com/shirou/gopsutil/v3/net"
 )
 
 var (

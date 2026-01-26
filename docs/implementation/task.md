@@ -11,13 +11,13 @@
 - [x] Implement process detection for Antigravity Language Server
 - [x] Implement port discovery logic
 - [x] Implement GetUserStatus API client
-- [ ] Implement multi-account support (Google accounts config)
-- [ ] Build CLI interface with quota display
-- [ ] Add config file management
-- [ ] Test on Linux
+- [x] Implement multi-account support (Google accounts config)
+- [x] Build CLI interface with quota display
+- [x] Add config file management
+- [x] Test on Linux
 
 ## Verification
-- [ ] Test with single account
-- [ ] Test with multiple accounts
-- [ ] Verify quota display accuracy
-- [ ] Performance benchmarking
+- [x] Test with single account
+- [x] Test with multiple accounts
+- [x] Verify quota display accuracy
+- [x] Performance benchmarking (Instant startup checks out)
