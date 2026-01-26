@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os/exec"
 	"runtime"
@@ -17,24 +18,26 @@ const (
 	GoogleAuthURL  = "https://accounts.google.com/o/oauth2/v2/auth"
 	GoogleTokenURL = "https://oauth2.googleapis.com/token"
 
-	// Google Cloud Code OAuth client ID (public, from Cloud Code extension)
-	ClientID = "764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com"
+	// Anti-Gravity OAuth client ID & Secret
+	ClientID     = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+	ClientSecret = "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"
 
 	// Redirect configuration
-	RedirectPort = 8085
-	RedirectURI  = "http://localhost:8085/callback"
+	RedirectPort = 42729
+	RedirectURI  = "http://127.0.0.1:42729/callback"
 
 	// OAuth2 scopes
-	Scopes = "openid email profile https://www.googleapis.com/auth/cloud-platform"
+	Scopes = "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email"
 )
 
 // GetOAuthConfig returns the OAuth2 configuration
 func GetOAuthConfig() *oauth2.Config {
 	return &oauth2.Config{
-		ClientID: ClientID,
-		Endpoint: google.Endpoint,
-		Scopes:   []string{"openid", "email", "profile", "https://www.googleapis.com/auth/cloud-platform"},
-		RedirectURL: RedirectURI,
+		ClientID:     ClientID,
+		ClientSecret: ClientSecret,
+		Endpoint:     google.Endpoint,
+		Scopes:       []string{"https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/userinfo.email"},
+		RedirectURL:  RedirectURI,
 	}
 }
 
@@ -49,50 +52,50 @@ type LoginResult struct {
 func Login() error {
 	oauthConfig := GetOAuthConfig()
 
-	// Generate PKCE parameters
-	verifier, err := GenerateCodeVerifier()
-	if err != nil {
-		return fmt.Errorf("failed to generate code verifier: %w", err)
-	}
-
-	challenge := GenerateCodeChallenge(verifier)
-
 	// Generate state for CSRF protection
 	state, err := GenerateState()
 	if err != nil {
 		return fmt.Errorf("failed to generate state: %w", err)
 	}
 
+	// Create a new ServeMux for this login session
+	mux := http.NewServeMux()
+
 	// Create channel to receive the result
 	resultChan := make(chan LoginResult, 1)
 
-	// Start local HTTP server for callback
+	// Handle OAuth2 callback
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		handleCallback(w, r, oauthConfig, state, "", resultChan)
+	})
+
+	// Start local HTTP server for callback on a random port
+	// We bind to 127.0.0.1 to avoid firewall prompts on some OSs
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return fmt.Errorf("failed to start listener: %w", err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+
+	// Update redirect URL with the actual port
+	oauthConfig.RedirectURL = fmt.Sprintf("http://127.0.0.1:%d/callback", port)
+
+	// Start server in background
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", RedirectPort),
+		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	// Handle OAuth2 callback
-	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		handleCallback(w, r, oauthConfig, state, verifier, resultChan)
-	})
-
-	// Start server in background
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			resultChan <- LoginResult{Error: fmt.Errorf("failed to start callback server: %w", err)}
 		}
 	}()
 
-	// Wait a moment for server to start
-	time.Sleep(100 * time.Millisecond)
-
-	// Build authorization URL with PKCE
+	// Build authorization URL
 	authURL := oauthConfig.AuthCodeURL(
 		state,
-		oauth2.SetAuthURLParam("code_challenge", challenge),
-		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 		oauth2.SetAuthURLParam("access_type", "offline"),
 		oauth2.SetAuthURLParam("prompt", "consent"),
 	)
@@ -159,14 +162,13 @@ func handleCallback(w http.ResponseWriter, r *http.Request, config *oauth2.Confi
 		return
 	}
 
-	// Exchange code for token with PKCE verifier
+	// Exchange code for token
 	ctx := context.Background()
-	token, err := config.Exchange(
-		ctx,
-		code,
-		oauth2.SetAuthURLParam("code_verifier", verifier),
-	)
+	token, err := config.Exchange(ctx, code)
 	if err != nil {
+		// Log detailed error for debugging
+		errMsg := fmt.Sprintf("Failed to exchange token: %v", err)
+		fmt.Printf("DEBUG: %s\n", errMsg)
 		http.Error(w, "Failed to exchange token", http.StatusInternalServerError)
 		resultChan <- LoginResult{Error: fmt.Errorf("failed to exchange token: %w", err)}
 		return

@@ -15,11 +15,11 @@ type ModelQuota struct {
 
 // QuotaSummary represents the complete quota information
 type QuotaSummary struct {
-	Email            string
-	ProjectID        string
-	Models           []ModelQuota
-	DefaultModelID   string
-	FetchedAt        time.Time
+	Email          string
+	ProjectID      string
+	Models         []ModelQuota
+	DefaultModelID string
+	FetchedAt      time.Time
 }
 
 // LoadCodeAssistRequest represents the request to load code assist
@@ -31,12 +31,36 @@ type LoadCodeAssistRequest struct {
 type LoadCodeAssistResponse struct {
 	ProjectID string `json:"projectId,omitempty"`
 	Status    string `json:"status,omitempty"`
+
+	// Fields from TS interface
+	CloudAICompanionProject interface{} `json:"cloudaicompanionProject,omitempty"`
+	PaidTier                *Tier       `json:"paidTier,omitempty"`
+	CurrentTier             *Tier       `json:"currentTier,omitempty"`
+	AllowedTiers            []Tier      `json:"allowedTiers,omitempty"`
+}
+
+type Tier struct {
+	ID        string `json:"id,omitempty"`
+	IsDefault bool   `json:"isDefault,omitempty"`
+}
+
+// OnboardUserRequest represents the request to onboard user
+type OnboardUserRequest struct {
+	TierID   string   `json:"tierId,omitempty"`
+	Metadata Metadata `json:"metadata,omitempty"`
+}
+
+// OnboardUserResponse represents the response from onboard user endpoint
+type OnboardUserResponse struct {
+	Done     bool `json:"done,omitempty"`
+	Response struct {
+		CloudAICompanionProject interface{} `json:"cloudaicompanionProject,omitempty"`
+	} `json:"response,omitempty"`
 }
 
 // FetchAvailableModelsRequest represents the request to fetch models
 type FetchAvailableModelsRequest struct {
-	Project  string   `json:"project,omitempty"`
-	Metadata Metadata `json:"metadata,omitempty"`
+	Project string `json:"project,omitempty"`
 }
 
 // FetchAvailableModelsResponse represents the response from fetchAvailableModels endpoint

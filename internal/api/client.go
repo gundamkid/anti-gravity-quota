@@ -157,6 +157,27 @@ func (c *Client) EnsureAuthenticated() error {
 	return nil
 }
 
+// extractProjectId handles the complex type of cloudaicompanionProject
+func extractProjectId(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+
+	// Case 1: String
+	if str, ok := value.(string); ok && str != "" {
+		return str
+	}
+
+	// Case 2: Object with ID
+	if m, ok := value.(map[string]interface{}); ok {
+		if id, ok := m["id"].(string); ok && id != "" {
+			return id
+		}
+	}
+
+	return ""
+}
+
 // LoadCodeAssist loads code assist status and retrieves project ID
 func (c *Client) LoadCodeAssist() (*models.LoadCodeAssistResponse, error) {
 	if err := c.EnsureAuthenticated(); err != nil {
@@ -177,12 +198,111 @@ func (c *Client) LoadCodeAssist() (*models.LoadCodeAssistResponse, error) {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
+	// Try to resolve project ID from various fields
+	projectID := response.ProjectID
+	if projectID == "" {
+		projectID = extractProjectId(response.CloudAICompanionProject)
+	}
+
 	// Store project ID if available
-	if response.ProjectID != "" {
-		c.SetProjectID(response.ProjectID)
+	if projectID != "" {
+		c.SetProjectID(projectID)
+		response.ProjectID = projectID // Ensure it's set in the response struct too
 	}
 
 	return &response, nil
+}
+
+// OnboardUser attempts to onboard the user to get a project ID
+func (c *Client) OnboardUser(tierID string) (string, error) {
+	request := models.OnboardUserRequest{
+		TierID:   tierID,
+		Metadata: models.GetDefaultMetadata(),
+	}
+
+	for attempt := 1; attempt <= 5; attempt++ {
+		responseData, err := c.doRequest("POST", "/v1internal:onboardUser", request)
+		if err != nil {
+			return "", fmt.Errorf("onboardUser failed: %w", err)
+		}
+
+		var response models.OnboardUserResponse
+		if err := json.Unmarshal(responseData, &response); err != nil {
+			return "", fmt.Errorf("failed to parse onboard response: %w", err)
+		}
+
+		if response.Done {
+			projectID := extractProjectId(response.Response.CloudAICompanionProject)
+			if projectID != "" {
+				return projectID, nil
+			}
+			// Done but no project ID?
+			return "", nil
+		}
+
+		// Wait before retry
+		time.Sleep(2 * time.Second)
+	}
+
+	return "", fmt.Errorf("onboarding timed out")
+}
+
+// ResolveProjectID implements the full logic to get a project ID
+func (c *Client) ResolveProjectID() (string, error) {
+	// Step 1: Call loadCodeAssist
+	resp, err := c.LoadCodeAssist()
+	if err != nil {
+		return "", err
+	}
+
+	// Step 2: Check if we already got it
+	if resp.ProjectID != "" {
+		return resp.ProjectID, nil
+	}
+
+	// Step 3: Determine Tier
+	var tierID string
+	if resp.PaidTier != nil && resp.PaidTier.ID != "" {
+		tierID = resp.PaidTier.ID
+	} else if resp.CurrentTier != nil && resp.CurrentTier.ID != "" {
+		tierID = resp.CurrentTier.ID
+	} else {
+		// Pick from allowed tiers
+		if len(resp.AllowedTiers) > 0 {
+			// Find default
+			for _, t := range resp.AllowedTiers {
+				if t.IsDefault && t.ID != "" {
+					tierID = t.ID
+					break
+				}
+			}
+			// Or first
+			if tierID == "" && resp.AllowedTiers[0].ID != "" {
+				tierID = resp.AllowedTiers[0].ID
+			}
+
+			// Fallback
+			if tierID == "" {
+				tierID = "LEGACY"
+			}
+		}
+	}
+
+	if tierID == "" {
+		return "", fmt.Errorf("cannot determine tier for onboarding")
+	}
+
+	// Step 4: Onboard
+	projectID, err := c.OnboardUser(tierID)
+	if err != nil {
+		return "", err
+	}
+
+	if projectID != "" {
+		c.SetProjectID(projectID)
+	}
+
+	return projectID, nil
 }
 
 // FetchAvailableModels retrieves available models with quota information
@@ -191,9 +311,10 @@ func (c *Client) FetchAvailableModels() (*models.FetchAvailableModelsResponse, e
 		return nil, err
 	}
 
-	request := models.FetchAvailableModelsRequest{
-		Metadata: models.GetDefaultMetadata(),
-	}
+	// Ensure we have a project ID first (via ResolveProjectID)
+	// We don't call it here to avoid recursion loop, but assumed it's called before or handled
+
+	request := models.FetchAvailableModelsRequest{}
 
 	// Include project ID if available
 	if c.projectID != "" {
@@ -215,11 +336,14 @@ func (c *Client) FetchAvailableModels() (*models.FetchAvailableModelsResponse, e
 
 // GetQuotaInfo retrieves complete quota information for all models
 func (c *Client) GetQuotaInfo() (*models.QuotaSummary, error) {
-	// First, load code assist to get project ID
-	_, err := c.LoadCodeAssist()
+	// First, resolve project ID (this handles onboarding if needed)
+	_, err := c.ResolveProjectID()
 	if err != nil {
+		fmt.Printf("DEBUG: ResolveProjectID failed: %v\n", err)
 		// Not a fatal error, continue without project ID
-		// Some accounts may not have a project ID
+	} else {
+		// Log success for debugging
+		// fmt.Printf("DEBUG: Project ID resolved: %s\n", projectID)
 	}
 
 	// Fetch available models

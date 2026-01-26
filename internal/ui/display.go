@@ -9,6 +9,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/gundamkid/anti-gravity-quota/internal/models"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 // DisplayQuotaSummaryJSON displays quota information in JSON format
@@ -25,9 +27,7 @@ func DisplayQuotaSummaryJSON(summary *models.QuotaSummary) error {
 func DisplayQuotaSummary(summary *models.QuotaSummary) {
 	// Header
 	fmt.Println()
-	color.Cyan("═══════════════════════════════════════════════════════════════")
-	color.Cyan("              Anti-Gravity Quota Status")
-	color.Cyan("═══════════════════════════════════════════════════════════════")
+	color.Cyan("  ✨ Anti-Gravity Quota Status")
 	fmt.Println()
 
 	// Account info
@@ -47,25 +47,71 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 		return models[i].DisplayName < models[j].DisplayName
 	})
 
-	// Create simple table using custom formatting
-	printTableHeader()
+	// Create table
+	t := table.NewWriter()
+	// No OutputMirror, we will Render() to string to indent it manually
+
+	// Set style (Rounded is modern and clean)
+	t.SetStyle(table.StyleRounded)
+
+	// Customize style for specific look
+	style := table.StyleRounded
+	style.Color.Header = text.Colors{text.FgCyan, text.Bold}
+	style.Color.Border = text.Colors{text.FgCyan}
+	style.Color.Separator = text.Colors{text.FgCyan}
+	t.SetStyle(style)
+
+	t.AppendHeader(table.Row{"Model", "Quota", "Reset In", "Status"})
 
 	for _, model := range models {
-		quotaStr := formatQuota(model)
-		resetStr := formatResetTime(model)
-		statusStr := formatStatus(model)
+		percentage := model.GetRemainingPercentage()
 
-		printTableRow(model.DisplayName, quotaStr, resetStr, statusStr)
+		// Colorize Quota cell
+		var quotaColor text.Colors
+		if percentage <= 10 {
+			quotaColor = text.Colors{text.FgRed, text.Bold}
+		} else if percentage <= 30 {
+			quotaColor = text.Colors{text.FgYellow}
+		} else {
+			quotaColor = text.Colors{text.FgGreen}
+		}
+		quotaStr := fmt.Sprintf("%3d%%", percentage)
+
+		// Format Status with colors
+		statusStr := model.GetStatusString()
+		var statusColor text.Colors
+		switch statusStr {
+		case "OK":
+			statusStr = "✓ OK"
+			statusColor = text.Colors{text.FgGreen}
+		case "LOW":
+			statusStr = "⚠ LOW"
+			statusColor = text.Colors{text.FgYellow}
+		case "EMPTY":
+			statusStr = "✗ EMPTY"
+			statusColor = text.Colors{text.FgRed}
+		}
+
+		t.AppendRow(table.Row{
+			model.DisplayName,
+			quotaColor.Sprint(quotaStr),
+			formatResetTime(model),
+			statusColor.Sprint(statusStr),
+		})
 	}
 
-	printTableFooter()
+	// Indent the table slightly for better look
+	// t.Render() returns the string. We prepend "  " to each line.
+	rendered := t.Render()
+	indented := "  " + strings.ReplaceAll(rendered, "\n", "\n  ")
+	fmt.Println(indented)
 	fmt.Println()
 
 	// Footer with default model
 	if summary.DefaultModelID != "" {
 		for _, model := range models {
 			if model.ModelID == summary.DefaultModelID {
-				color.Cyan("  Default Model: %s", model.DisplayName)
+				color.Cyan("  ⭐ Default Model: %s", model.DisplayName)
 				break
 			}
 		}
@@ -73,77 +119,12 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 	}
 }
 
-// printTableHeader prints the table header
-func printTableHeader() {
-	cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
-	fmt.Println(cyan("  ┌────────────────────────┬──────────────────────┬─────────────┬──────────┐"))
-	fmt.Printf("%s%-24s%s%-22s%s%-13s%s%-10s%s\n",
-		cyan("  │ "),
-		cyan("Model"),
-		cyan(" │ "),
-		cyan("Quota"),
-		cyan(" │ "),
-		cyan("Reset In"),
-		cyan(" │ "),
-		cyan("Status"),
-		cyan(" │"))
-	fmt.Println(cyan("  ├────────────────────────┼──────────────────────┼─────────────┼──────────┤"))
-}
-
-// printTableRow prints a table row
-func printTableRow(model, quota, reset, status string) {
-	// Remove ANSI color codes for width calculation
-	statusClean := strings.ReplaceAll(status, "\x1b[32m", "")
-	statusClean = strings.ReplaceAll(statusClean, "\x1b[33m", "")
-	statusClean = strings.ReplaceAll(statusClean, "\x1b[31m", "")
-	statusClean = strings.ReplaceAll(statusClean, "\x1b[0m", "")
-
-	// Calculate padding for status (accounting for unicode characters)
-	statusWidth := 6 // Width of "✓ OK", "⚠ LOW", "✗ EMPTY"
-	statusPadding := strings.Repeat(" ", 10-statusWidth)
-
-	fmt.Printf("  │ %-22s │ %-20s │ %-11s │ %s%s │\n",
-		truncate(model, 22),
-		quota,
-		reset,
-		status,
-		statusPadding,
-	)
-}
-
-// printTableFooter prints the table footer
-func printTableFooter() {
-	cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
-	fmt.Println(cyan("  └────────────────────────┴──────────────────────┴─────────────┴──────────┘"))
-}
-
-// truncate truncates a string to a maximum length
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
-}
-
-// formatQuota formats the quota percentage with a progress bar
-func formatQuota(model models.ModelQuota) string {
-	percentage := model.GetRemainingPercentage()
-
-	// Create progress bar (10 characters)
-	filled := percentage / 10
-	empty := 10 - filled
-
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", empty)
-
-	return fmt.Sprintf("%3d%% [%s]", percentage, bar)
-}
-
 // formatResetTime formats the time until reset in a human-readable format
 func formatResetTime(model models.ModelQuota) string {
 	duration := model.GetTimeUntilReset()
 
 	if duration < 0 {
-		return "Resetting..."
+		return "Regenerating..."
 	}
 
 	hours := int(duration.Hours())
@@ -152,30 +133,14 @@ func formatResetTime(model models.ModelQuota) string {
 	if hours > 24 {
 		days := hours / 24
 		hours = hours % 24
-		return fmt.Sprintf("%dd %dh", days, hours)
+		return fmt.Sprintf("%dd %02dh", days, hours)
 	}
 
 	if hours > 0 {
-		return fmt.Sprintf("%dh %dm", hours, minutes)
+		return fmt.Sprintf("%dh %02dm", hours, minutes)
 	}
 
 	return fmt.Sprintf("%dm", minutes)
-}
-
-// formatStatus formats the status with appropriate coloring
-func formatStatus(model models.ModelQuota) string {
-	status := model.GetStatusString()
-
-	switch status {
-	case "OK":
-		return color.GreenString("✓ OK")
-	case "LOW":
-		return color.YellowString("⚠ LOW")
-	case "EMPTY":
-		return color.RedString("✗ EMPTY")
-	default:
-		return status
-	}
 }
 
 // DisplayError displays an error message
