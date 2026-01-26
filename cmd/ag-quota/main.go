@@ -3,7 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/fatih/color"
+	"github.com/gundamkid/anti-gravity-quota/internal/auth"
+	"github.com/gundamkid/anti-gravity-quota/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -43,8 +47,7 @@ var loginCmd = &cobra.Command{
 	Short: "Login with Google account",
 	Long:  `Start OAuth2 login flow to authenticate with your Google account.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Login command - Coming soon!")
-		// TODO: Implement OAuth2 login flow
+		runLogin(cmd, args)
 	},
 }
 
@@ -54,8 +57,7 @@ var statusCmd = &cobra.Command{
 	Short: "Check authentication status",
 	Long:  `Display current authentication status and account information.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Status command - Coming soon!")
-		// TODO: Implement status check
+		runStatus(cmd, args)
 	},
 }
 
@@ -65,9 +67,77 @@ var logoutCmd = &cobra.Command{
 	Short: "Logout and clear stored tokens",
 	Long:  `Remove stored authentication tokens and logout from the current account.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Logout command - Coming soon!")
-		// TODO: Implement logout
+		runLogout(cmd, args)
 	},
+}
+
+// runLogin handles the login command
+func runLogin(cmd *cobra.Command, args []string) {
+	fmt.Println("Starting authentication flow...")
+	fmt.Println()
+
+	if err := auth.Login(); err != nil {
+		color.Red("Error: %v", err)
+		os.Exit(1)
+	}
+}
+
+// runStatus handles the status command
+func runStatus(cmd *cobra.Command, args []string) {
+	token, err := auth.LoadToken()
+	if err != nil {
+		color.Red("Not logged in")
+		fmt.Println("Run 'ag-quota login' to authenticate")
+		os.Exit(1)
+	}
+
+	fmt.Println("Authentication Status")
+	fmt.Println("====================")
+	fmt.Println()
+
+	if token.Email != "" {
+		color.Green("✓ Logged in as: %s", token.Email)
+	} else {
+		color.Green("✓ Logged in")
+	}
+
+	// Check token validity
+	if token.IsExpired() {
+		color.Yellow("⚠ Token expired")
+		if token.RefreshToken != "" {
+			fmt.Println("  Token will be automatically refreshed on next use")
+		} else {
+			fmt.Println("  Please run 'ag-quota login' to re-authenticate")
+		}
+	} else {
+		timeUntilExpiry := time.Until(token.Expiry)
+		color.Green("✓ Token valid for: %s", timeUntilExpiry.Round(time.Minute))
+	}
+
+	// Show config directory
+	configDir, err := config.GetConfigDir()
+	if err == nil {
+		fmt.Println()
+		fmt.Printf("Config directory: %s\n", configDir)
+	}
+}
+
+// runLogout handles the logout command
+func runLogout(cmd *cobra.Command, args []string) {
+	// Check if logged in first
+	_, err := auth.LoadToken()
+	if err != nil {
+		color.Yellow("Not logged in")
+		return
+	}
+
+	// Delete token
+	if err := auth.DeleteToken(); err != nil {
+		color.Red("Error logging out: %v", err)
+		os.Exit(1)
+	}
+
+	color.Green("✓ Logged out successfully")
 }
 
 func init() {

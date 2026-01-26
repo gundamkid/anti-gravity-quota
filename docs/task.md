@@ -2,18 +2,6 @@
 
 ## 🎯 Current Sprint
 
-### Phase 2: Authentication Module
-- [ ] Implement OAuth2 login flow
-  - [ ] Generate PKCE code verifier/challenge
-  - [ ] Start local HTTP callback server
-  - [ ] Open browser for Google auth
-  - [ ] Handle callback and exchange code
-- [ ] Implement token storage
-  - [ ] Save tokens to config file
-  - [ ] Load tokens from config
-  - [ ] Auto-refresh expired tokens
-- [ ] Test login flow end-to-end
-
 ### Phase 3: Cloud Code API Client
 - [ ] Implement HTTP client with auth headers
 - [ ] Implement `loadCodeAssist` endpoint
@@ -53,6 +41,32 @@
 - Added all required dependencies: cobra (CLI), color (output), tablewriter (formatting), oauth2 (auth)
 - Built working CLI with command structure: quota, login, status, logout
 - Verified CLI builds and runs successfully
+
+---
+
+### Phase 2: Authentication Module ✅
+- [x] Implement OAuth2 login flow
+  - [x] Generate PKCE code verifier/challenge
+  - [x] Start local HTTP callback server
+  - [x] Open browser for Google auth
+  - [x] Handle callback and exchange code
+- [x] Implement token storage
+  - [x] Save tokens to config file
+  - [x] Load tokens from config
+  - [x] Auto-refresh expired tokens
+- [x] Test login flow end-to-end
+
+**Completed:** 2026-01-26
+
+**Summary:**
+- Implemented config directory management in `~/.config/ag-quota/`
+- Created PKCE code verifier/challenge generator for secure OAuth2 flow
+- Built complete OAuth2 authentication flow with local callback server (port 8085)
+- Token storage with 0600 permissions for security
+- Auto-refresh logic for expired tokens
+- Integrated login, status, and logout commands with colored output
+- Browser auto-opens for authentication with fallback URL display
+- Beautiful HTML success page after authentication
 
 ---
 
