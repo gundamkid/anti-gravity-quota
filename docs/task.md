@@ -18,7 +18,7 @@ The MVP is ready for use. Future enhancements can include:
 ### Phase 1: Project Setup & Core Structure ✅
 - [x] Initialize Go module
 - [x] Set up project directory structure
-- [x] Add dependencies (cobra, color, tablewriter, oauth2)
+- [x] Add dependencies (cobra, color, go-pretty, oauth2)
 - [x] Create main.go entry point
 
 **Completed:** 2026-01-26
@@ -26,7 +26,7 @@ The MVP is ready for use. Future enhancements can include:
 **Summary:**
 - Created Go module at `github.com/gundamkid/anti-gravity-quota`
 - Set up organized directory structure with `cmd/` and `internal/` packages
-- Added all required dependencies: cobra (CLI), color (output), tablewriter (formatting), oauth2 (auth)
+- Added all required dependencies: cobra (CLI), color (output), go-pretty (formatting), oauth2 (auth)
 - Built working CLI with command structure: quota, login, status, logout
 - Verified CLI builds and runs successfully
 
@@ -92,7 +92,7 @@ The MVP is ready for use. Future enhancements can include:
 **Summary:**
 - Created beautiful UI display module with custom table formatting
 - Implemented quota display with colored output and progress bars
-- Visual quota bars showing remaining percentage (0-100%)
+- Visual quota indicators showing remaining percentage (0-100%)
 - Color-coded status indicators: ✓ OK (green), ⚠ LOW (yellow), ✗ EMPTY (red)
 - Human-readable reset time formatting (e.g., "2h 30m", "1d 5h")
 - Integrated all commands: quota, login, status, logout

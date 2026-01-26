@@ -41,29 +41,27 @@ ag-quota logout
 
 ### Check Quota
 
-Display quota information for all AI models with visual progress bars:
+Display quota information for all AI models:
 
 ```bash
 $ ag-quota
 
-═══════════════════════════════════════════════════════════════
-              Anti-Gravity Quota Status
-═══════════════════════════════════════════════════════════════
+  ✨ Anti-Gravity Quota Status
 
   Account: user@example.com
   Project: my-project-123456
   Fetched: 2026-01-26 07:45:23 UTC
 
-  ┌────────────────────────┬──────────────────────┬─────────────┬──────────┐
-  │ Model                  │ Quota                │ Reset In    │ Status   │
-  ├────────────────────────┼──────────────────────┼─────────────┼──────────┤
-  │ Claude 4 Opus          │  85% [████████░░]    │ 4h 23m      │ ✓ OK     │
-  │ Claude 4 Sonnet        │ 100% [██████████]    │ 5h 0m       │ ✓ OK     │
-  │ Gemini 3 Flash         │   0% [░░░░░░░░░░]    │ 2h 15m      │ ✗ EMPTY  │
-  │ Gemini 3 Pro           │  50% [█████░░░░░]    │ 3h 45m      │ ✓ OK     │
-  └────────────────────────┴──────────────────────┴─────────────┴──────────┘
+  ┌────────────────────────┬───────┬──────────┬──────────┐
+  │ Model                  │ Quota │ Reset In │ Status   │
+  ├────────────────────────┼───────┼──────────┼──────────┤
+  │ Claude 4 Opus          │  85%  │ 4h 23m   │ ✓ OK     │
+  │ Claude 4 Sonnet        │ 100%  │ 5h 0m    │ ✓ OK     │
+  │ Gemini 3 Flash         │   0%  │ 2h 15m   │ ✗ EMPTY  │
+  │ Gemini 3 Pro           │  50%  │ 3h 45m   │ ✓ OK     │
+  └────────────────────────┴───────┴──────────┴──────────┘
 
-  Default Model: Claude 4 Sonnet
+  ⭐ Default Model: Claude 4 Sonnet
 ```
 
 **Status Indicators:**
@@ -270,6 +268,7 @@ Built with:
 - [cobra](https://github.com/spf13/cobra) - CLI framework
 - [color](https://github.com/fatih/color) - Colored terminal output
 - [oauth2](https://golang.org/x/oauth2) - OAuth2 client
+- [go-pretty](https://github.com/jedib0t/go-pretty) - Table output
 
 ## License
 

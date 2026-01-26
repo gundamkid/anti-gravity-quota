@@ -182,9 +182,9 @@ client_id=<client_id>
 {
   "access_token": "ya29.xxx...",
   "refresh_token": "1//xxx...",
-  "expires_at": "2026-01-26T08:00:00Z",
-  "email": "user@gmail.com",
-  "project_id": "projects/123456789"
+  "token_type": "Bearer",
+  "expiry": "2026-01-26T08:00:00Z",
+  "email": "user@gmail.com"
 }
 ```
 
@@ -194,6 +194,7 @@ client_id=<client_id>
 type ModelQuota struct {
     ModelID           string    // "claude-sonnet-4-5"
     DisplayName       string    // "Claude 4 Sonnet"
+    Label             string    // "Claude 4 Sonnet"
     Provider          string    // "claude" | "google"
     RemainingFraction float64   // 0.0 - 1.0
     ResetTime         time.Time // When quota resets
