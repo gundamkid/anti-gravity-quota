@@ -30,13 +30,6 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 	color.Cyan("  ✨ Anti-Gravity Quota Status")
 	fmt.Println()
 
-	// Account info
-	if summary.Email != "" {
-		fmt.Printf("  Account: %s\n", color.GreenString(summary.Email))
-	}
-	if summary.ProjectID != "" {
-		fmt.Printf("  Project: %s\n", summary.ProjectID)
-	}
 	fmt.Printf("  Fetched: %s\n", summary.FetchedAt.Format("2006-01-02 15:04:05 MST"))
 	fmt.Println()
 
@@ -64,6 +57,10 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 	t.AppendHeader(table.Row{"Model", "Quota", "Reset In", "Status"})
 
 	for _, model := range models {
+		if model.DisplayName == "" {
+			continue
+		}
+
 		percentage := model.GetRemainingPercentage()
 
 		// Colorize Quota cell
