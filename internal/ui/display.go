@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -9,6 +10,16 @@ import (
 	"github.com/fatih/color"
 	"github.com/gundamkid/anti-gravity-quota/internal/models"
 )
+
+// DisplayQuotaSummaryJSON displays quota information in JSON format
+func DisplayQuotaSummaryJSON(summary *models.QuotaSummary) error {
+	data, err := json.MarshalIndent(summary, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
+}
 
 // DisplayQuotaSummary displays quota information in a formatted table
 func DisplayQuotaSummary(summary *models.QuotaSummary) {

@@ -2,12 +2,14 @@
 
 ## 🎯 Current Sprint
 
-### Phase 5: Polish & Release
-- [ ] Add JSON output option (`--json`)
-- [ ] Add error handling and user-friendly messages
-- [ ] Write usage documentation
-- [ ] Test on Linux
-- [ ] Build release binaries
+**All phases complete! 🎉**
+
+The MVP is ready for use. Future enhancements can include:
+- Multi-account support
+- Watch mode for continuous monitoring
+- Cache support for offline viewing
+- Additional output formats (CSV, YAML)
+- Configuration file support
 
 ---
 
@@ -101,6 +103,29 @@
 - Account and project information display
 - Sorted model list by display name
 - Default model highlighting
+
+---
+
+### Phase 5: Polish & Release ✅
+- [x] Add JSON output option (`--json`)
+- [x] Add error handling and user-friendly messages
+- [x] Write usage documentation
+- [x] Test on Linux
+- [x] Build release binaries
+
+**Completed:** 2026-01-26
+
+**Summary:**
+- Added `--json` flag for machine-readable output
+- JSON error messages for scripting support
+- Comprehensive README with usage examples, API details, and troubleshooting
+- Status indicators documentation (OK, LOW, EMPTY)
+- Configuration file locations for Linux/macOS
+- Tested all commands successfully on Linux (WSL2)
+- Created `build.sh` script for multi-platform builds (Linux, macOS, Windows)
+- Created Makefile with common tasks (build, clean, install, test)
+- Support for amd64 and arm64 architectures
+- Build artifacts organized in `dist/` directory
 
 ---
 

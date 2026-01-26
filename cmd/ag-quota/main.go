@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	version = "0.1.0"
+	version    = "0.1.0"
+	jsonOutput bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -77,13 +78,19 @@ func runQuota(cmd *cobra.Command, args []string) {
 	// Check if logged in
 	_, err := auth.LoadToken()
 	if err != nil {
-		ui.DisplayNotLoggedIn()
+		if jsonOutput {
+			fmt.Fprintf(os.Stderr, `{"error": "not logged in"}%s`, "\n")
+		} else {
+			ui.DisplayNotLoggedIn()
+		}
 		os.Exit(1)
 	}
 
-	// Show loading message
-	fmt.Println()
-	fmt.Print("Fetching quota information... ")
+	// Show loading message (only if not JSON output)
+	if !jsonOutput {
+		fmt.Println()
+		fmt.Print("Fetching quota information... ")
+	}
 
 	// Create API client
 	client := api.NewClient()
@@ -91,20 +98,33 @@ func runQuota(cmd *cobra.Command, args []string) {
 	// Get quota info
 	quotaInfo, err := client.GetQuotaInfo()
 	if err != nil {
-		fmt.Println()
-		ui.DisplayError("Failed to fetch quota information", err)
-		fmt.Println()
-		fmt.Println("Possible issues:")
-		fmt.Println("  • Token may have expired (run 'ag-quota login' to re-authenticate)")
-		fmt.Println("  • Network connection issues")
-		fmt.Println("  • API service may be temporarily unavailable")
+		if jsonOutput {
+			fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "message": "%s"}%s`, err.Error(), "\n")
+		} else {
+			fmt.Println()
+			ui.DisplayError("Failed to fetch quota information", err)
+			fmt.Println()
+			fmt.Println("Possible issues:")
+			fmt.Println("  • Token may have expired (run 'ag-quota login' to re-authenticate)")
+			fmt.Println("  • Network connection issues")
+			fmt.Println("  • API service may be temporarily unavailable")
+		}
 		os.Exit(1)
 	}
 
-	fmt.Println(color.GreenString("✓"))
+	if !jsonOutput {
+		fmt.Println(color.GreenString("✓"))
+	}
 
 	// Display quota information
-	ui.DisplayQuotaSummary(quotaInfo)
+	if jsonOutput {
+		if err := ui.DisplayQuotaSummaryJSON(quotaInfo); err != nil {
+			fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		ui.DisplayQuotaSummary(quotaInfo)
+	}
 }
 
 // runLogin handles the login command
@@ -183,8 +203,8 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(logoutCmd)
 
-	// Add flags if needed
-	// quotaCmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	// Add flags
+	quotaCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
 }
 
 func main() {
