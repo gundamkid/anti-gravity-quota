@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/gundamkid/anti-gravity-quota/internal/api"
 	"github.com/gundamkid/anti-gravity-quota/internal/auth"
 	"github.com/gundamkid/anti-gravity-quota/internal/config"
+	"github.com/gundamkid/anti-gravity-quota/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -36,8 +38,7 @@ var quotaCmd = &cobra.Command{
 	Short: "Check quota for all models",
 	Long:  `Display quota information for all available AI models (Claude and Gemini).`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Quota command - Coming soon!")
-		// TODO: Implement quota display
+		runQuota(cmd, args)
 	},
 }
 
@@ -69,6 +70,41 @@ var logoutCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		runLogout(cmd, args)
 	},
+}
+
+// runQuota handles the quota command
+func runQuota(cmd *cobra.Command, args []string) {
+	// Check if logged in
+	_, err := auth.LoadToken()
+	if err != nil {
+		ui.DisplayNotLoggedIn()
+		os.Exit(1)
+	}
+
+	// Show loading message
+	fmt.Println()
+	fmt.Print("Fetching quota information... ")
+
+	// Create API client
+	client := api.NewClient()
+
+	// Get quota info
+	quotaInfo, err := client.GetQuotaInfo()
+	if err != nil {
+		fmt.Println()
+		ui.DisplayError("Failed to fetch quota information", err)
+		fmt.Println()
+		fmt.Println("Possible issues:")
+		fmt.Println("  • Token may have expired (run 'ag-quota login' to re-authenticate)")
+		fmt.Println("  • Network connection issues")
+		fmt.Println("  • API service may be temporarily unavailable")
+		os.Exit(1)
+	}
+
+	fmt.Println(color.GreenString("✓"))
+
+	// Display quota information
+	ui.DisplayQuotaSummary(quotaInfo)
 }
 
 // runLogin handles the login command
