@@ -46,6 +46,9 @@ config.json
 *~
 .DS_Store
 
+# AI things 
+.claude/
+
 # OS files
 Thumbs.db
 .directory
