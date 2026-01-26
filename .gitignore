@@ -1,0 +1,63 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Build artifacts (only in root directory)
+/ag-quota
+/ag-quota.exe
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Build output
+build/
+dist/
+bin/
+
+# Config and sensitive data
+.config/
+*.json
+!go.mod
+!go.sum
+
+# Token storage (IMPORTANT: Never commit tokens!)
+token.json
+config.json
+.antigravity/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+.directory
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Debug files
+debug
+__debug_bin
