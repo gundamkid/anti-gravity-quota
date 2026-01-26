@@ -24,6 +24,7 @@ type OAuthCreds struct {
 type Client struct {
 	baseURL    string
 	token      string
+	csrfToken  string
 	httpClient *http.Client
 }
 
@@ -38,7 +39,7 @@ type UserStatusResponse struct {
 	Models []ModelQuota `json:"models"`
 }
 
-func NewClient(port int) (*Client, error) {
+func NewClient(port int, csrfToken string) (*Client, error) {
 	token, err := readAuthToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read auth token: %w", err)
@@ -47,6 +48,7 @@ func NewClient(port int) (*Client, error) {
 	return &Client{
 		baseURL:    fmt.Sprintf("http://localhost:%d", port),
 		token:      token,
+		csrfToken:  csrfToken,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}, nil
 }
@@ -77,6 +79,9 @@ func readAuthToken() (string, error) {
 
 func (c *Client) GetUserStatus() (*UserStatusResponse, error) {
 	url := fmt.Sprintf("%s/GetUserStatus", c.baseURL)
+	if c.csrfToken != "" {
+		url = fmt.Sprintf("%s?csrf_token=%s", url, c.csrfToken)
+	}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -84,6 +89,11 @@ func (c *Client) GetUserStatus() (*UserStatusResponse, error) {
 
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
+	if c.csrfToken != "" {
+		req.Header.Set("X-CSRF-Token", c.csrfToken)
+		req.Header.Set("X-XSRF-Token", c.csrfToken)
+		req.Header.Set("X-Csrf-Token", c.csrfToken)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

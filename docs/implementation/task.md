@@ -21,3 +21,12 @@
 - [x] Test with multiple accounts
 - [x] Verify quota display accuracy
 - [x] Performance benchmarking (Instant startup checks out)
+
+## Cloud Mode (No Antigravity Required)
+- [ ] Add Google OAuth2 token refresh logic
+- [ ] Implement Cloud Mode API client (Google Cloud Code API)
+- [ ] Add `--method` flag (auto/local/google)
+- [ ] Add `--all` flag for all accounts
+- [ ] Add `doctor` command for troubleshooting
+- [ ] Add `status` command for quick auth check
+- [ ] Test fallback from Local to Cloud

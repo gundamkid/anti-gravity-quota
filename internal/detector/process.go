@@ -13,13 +13,15 @@ import (
 var (
 	ErrProcessNotFound = errors.New("antigravity language server process not found")
 	ErrPortNotFound    = errors.New("port not found in process arguments or connections")
-	portArgRegex       = regexp.MustCompile(`--port[=\s](\d+)`)
+	portArgRegex       = regexp.MustCompile(`--(?:extension_server_port|port)[=\s](\d+)`)
+	csrfArgRegex       = regexp.MustCompile(`--csrf_token[=\s]([\w-]+)`)
 )
 
 type ProcessInfo struct {
-	Pid     int32
-	Cmdline string
-	Port    int
+	Pid       int32
+	Cmdline   string
+	Port      int
+	CsrfToken string
 }
 
 // FindAntigravityProcess scans for the Antigravity Language Server process
@@ -30,15 +32,14 @@ func FindAntigravityProcess() (*ProcessInfo, error) {
 	}
 
 	for _, p := range processes {
-		// Optimization: Check name first if possible, but cmdline is more reliable for node processes
 		cmdline, err := p.Cmdline()
 		if err != nil {
 			continue
 		}
 
-		// Look for the language server process
-		// Common patterns: "antigravity-language-server", or specific binary
-		if strings.Contains(cmdline, "antigravity-language-server") {
+		// Match real Antigravity binary names or our mock
+		if strings.Contains(cmdline, "language_server_linux_x64") || 
+		   strings.Contains(cmdline, "antigravity-language-server") {
 			info := &ProcessInfo{
 				Pid:     p.Pid,
 				Cmdline: cmdline,
@@ -48,6 +49,12 @@ func FindAntigravityProcess() (*ProcessInfo, error) {
 			port, err := extractPort(p, cmdline)
 			if err == nil {
 				info.Port = port
+			}
+			
+			// Try to extract CSRF token
+			csrfMatches := csrfArgRegex.FindStringSubmatch(cmdline)
+			if len(csrfMatches) > 1 {
+				info.CsrfToken = csrfMatches[1]
 			}
 			
 			return info, nil

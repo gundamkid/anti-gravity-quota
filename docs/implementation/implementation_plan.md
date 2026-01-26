@@ -244,6 +244,37 @@ go test -cover ./...
 
 ---
 
+---
+
+## Component 6: Cloud Mode (No Antigravity Required)
+
+Thêm tính năng Cloud Mode để có thể check quota mà **không cần mở Antigravity IDE**, sử dụng Google Cloud Code API trực tiếp.
+
+### Strategy: Dual-Fetch (Auto Mode)
+
+```mermaid
+flowchart TD
+    A[anti-gravity-quota] --> B{--method flag?}
+    B -->|local| C[Local Mode Only]
+    B -->|google| D[Cloud Mode Only]
+    B -->|auto/default| E{Antigravity Running?}
+    E -->|Yes| C
+    E -->|No| D
+    C --> F[Connect to localhost:port]
+    D --> G[Call Google Cloud API]
+    F --> H[Display Quota]
+    G --> H
+```
+
+### Components for Cloud Mode:
+
+1. **Google OAuth2 Integration**: Thêm `CloudClient` và logic `RefreshToken()`.
+2. **Method Flag & Auto-Detection**: Thêm `--method` và `--all` flags.
+3. **Account Credentials Loading**: Load tokens từ `~/.gemini/oauth_creds.json`.
+4. **Diagnostic Commands**: Thêm `status` và `doctor` subcommands.
+
+---
+
 ## Future Enhancements (Nice-to-have)
 
 - [ ] Desktop notification khi quota < 20%
