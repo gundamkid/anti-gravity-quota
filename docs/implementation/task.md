@@ -10,7 +10,7 @@
 - [x] Set up project structure (Go)
 - [x] Implement process detection for Antigravity Language Server
 - [x] Implement port discovery logic
-- [ ] Implement GetUserStatus API client
+- [x] Implement GetUserStatus API client
 - [ ] Implement multi-account support (Google accounts config)
 - [ ] Build CLI interface with quota display
 - [ ] Add config file management
