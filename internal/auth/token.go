@@ -224,3 +224,41 @@ func GetValidToken(oauthConfig *oauth2.Config) (string, error) {
 
 	return refreshedToken.AccessToken, nil
 }
+
+// GetValidTokenForAccount returns a valid access token for a specific account, refreshing if necessary
+func GetValidTokenForAccount(email string, oauthConfig *oauth2.Config) (string, error) {
+	// Load existing token for the account
+	token, err := LoadTokenForAccount(email)
+	if err != nil {
+		return "", err
+	}
+
+	// Check if token is still valid
+	if token.IsValid() {
+		return token.AccessToken, nil
+	}
+
+	// Token expired, try to refresh
+	if token.RefreshToken == "" {
+		return "", fmt.Errorf("token expired and no refresh token available for %s, please login again", email)
+	}
+
+	// Create token source
+	tokenSource := oauthConfig.TokenSource(context.Background(), token.ToOAuth2Token())
+
+	// Get fresh token
+	newToken, err := tokenSource.Token()
+	if err != nil {
+		return "", fmt.Errorf("failed to refresh token for %s: %w", email, err)
+	}
+
+	// Create new TokenData with refreshed token
+	refreshedToken := FromOAuth2Token(newToken, email)
+
+	// Save the refreshed token for this account
+	if err := SaveTokenForAccount(email, refreshedToken); err != nil {
+		return "", fmt.Errorf("failed to save refreshed token for %s: %w", email, err)
+	}
+
+	return refreshedToken.AccessToken, nil
+}

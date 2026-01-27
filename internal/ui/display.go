@@ -187,3 +187,121 @@ func (s *Spinner) Next() string {
 	s.index = (s.index + 1) % len(s.frames)
 	return frame
 }
+
+// AccountQuotaResult represents quota information for a single account
+type AccountQuotaResult struct {
+	Email        string               `json:"email"`
+	QuotaSummary *models.QuotaSummary `json:"quota_summary,omitempty"`
+	Error        string               `json:"error,omitempty"`
+}
+
+// DisplayAllAccountsQuotaJSON displays quota for all accounts in JSON format
+func DisplayAllAccountsQuotaJSON(results []*AccountQuotaResult) error {
+	data, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
+// DisplayAllAccountsQuota displays quota for all accounts in a formatted table
+func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
+	if len(results) == 0 {
+		color.Yellow("No accounts to display")
+		return
+	}
+
+	// Header
+	fmt.Println()
+	color.Cyan("  ✨ Anti-Gravity Quota Status - All Accounts")
+	fmt.Println()
+
+	// Create a table for each account
+	for _, result := range results {
+		// Account header
+		if result.Error != "" {
+			color.Red("  ✗ %s", result.Email)
+			fmt.Printf("    Error: %s\n", result.Error)
+			fmt.Println()
+			continue
+		}
+
+		if result.QuotaSummary == nil {
+			color.Yellow("  ⚠ %s - No data", result.Email)
+			fmt.Println()
+			continue
+		}
+
+		// Display account email
+		color.Cyan("  📧 %s", result.Email)
+		fmt.Println()
+
+		// Sort models by display name
+		models := make([]models.ModelQuota, len(result.QuotaSummary.Models))
+		copy(models, result.QuotaSummary.Models)
+		sort.Slice(models, func(i, j int) bool {
+			return models[i].DisplayName < models[j].DisplayName
+		})
+
+		// Create table
+		t := table.NewWriter()
+		t.SetStyle(table.StyleRounded)
+
+		// Customize style
+		style := table.StyleRounded
+		style.Color.Header = text.Colors{text.FgCyan, text.Bold}
+		style.Color.Border = text.Colors{text.FgCyan}
+		style.Color.Separator = text.Colors{text.FgCyan}
+		t.SetStyle(style)
+
+		t.AppendHeader(table.Row{"Model", "Quota", "Reset In", "Status"})
+
+		for _, model := range models {
+			if model.DisplayName == "" {
+				continue
+			}
+
+			percentage := model.GetRemainingPercentage()
+
+			// Colorize Quota cell
+			var quotaColor text.Colors
+			if percentage <= 10 {
+				quotaColor = text.Colors{text.FgRed, text.Bold}
+			} else if percentage <= 30 {
+				quotaColor = text.Colors{text.FgYellow}
+			} else {
+				quotaColor = text.Colors{text.FgGreen}
+			}
+			quotaStr := fmt.Sprintf("%3d%%", percentage)
+
+			// Format Status with colors
+			statusStr := model.GetStatusString()
+			var statusColor text.Colors
+			switch statusStr {
+			case "OK":
+				statusStr = "✓ OK"
+				statusColor = text.Colors{text.FgGreen}
+			case "LOW":
+				statusStr = "⚠ LOW"
+				statusColor = text.Colors{text.FgYellow}
+			case "EMPTY":
+				statusStr = "✗ EMPTY"
+				statusColor = text.Colors{text.FgRed}
+			}
+
+			t.AppendRow(table.Row{
+				model.DisplayName,
+				quotaColor.Sprint(quotaStr),
+				formatResetTime(model),
+				statusColor.Sprint(statusStr),
+			})
+		}
+
+		// Indent the table
+		rendered := t.Render()
+		indented := "    " + strings.ReplaceAll(rendered, "\n", "\n    ")
+		fmt.Println(indented)
+		fmt.Println()
+	}
+}

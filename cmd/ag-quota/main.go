@@ -14,8 +14,10 @@ import (
 )
 
 var (
-	version    = "0.1.0"
-	jsonOutput bool
+	version     = "0.1.0"
+	jsonOutput  bool
+	accountFlag string
+	allFlag     bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -75,7 +77,19 @@ var logoutCmd = &cobra.Command{
 
 // runQuota handles the quota command
 func runQuota(cmd *cobra.Command, args []string) {
-	// Check if logged in
+	// Handle --all flag
+	if allFlag {
+		runQuotaForAllAccounts()
+		return
+	}
+
+	// Handle --account flag
+	if accountFlag != "" {
+		runQuotaForAccount(accountFlag)
+		return
+	}
+
+	// Default: check quota for default account
 	_, err := auth.LoadToken()
 	if err != nil {
 		if jsonOutput {
@@ -124,6 +138,123 @@ func runQuota(cmd *cobra.Command, args []string) {
 		}
 	} else {
 		ui.DisplayQuotaSummary(quotaInfo)
+	}
+}
+
+// runQuotaForAccount fetches and displays quota for a specific account
+func runQuotaForAccount(email string) {
+	if !jsonOutput {
+		fmt.Println()
+		fmt.Printf("Fetching quota for %s... ", email)
+	}
+
+	client := api.NewClient()
+	quotaInfo, err := client.GetQuotaInfoForAccount(email)
+	if err != nil {
+		if jsonOutput {
+			fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "account": "%s", "message": "%s"}%s`, email, err.Error(), "\n")
+		} else {
+			fmt.Println()
+			ui.DisplayError(fmt.Sprintf("Failed to fetch quota for %s", email), err)
+		}
+		os.Exit(1)
+	}
+
+	if !jsonOutput {
+		fmt.Println(color.GreenString("✓"))
+	}
+
+	if jsonOutput {
+		if err := ui.DisplayQuotaSummaryJSON(quotaInfo); err != nil {
+			fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		ui.DisplayQuotaSummary(quotaInfo)
+	}
+}
+
+// runQuotaForAllAccounts fetches and displays quota for all saved accounts
+func runQuotaForAllAccounts() {
+	mgr, err := auth.NewAccountManager()
+	if err != nil {
+		if jsonOutput {
+			fmt.Fprintf(os.Stderr, `{"error": "failed to initialize account manager", "message": "%s"}%s`, err.Error(), "\n")
+		} else {
+			ui.DisplayError("Failed to initialize account manager", err)
+		}
+		os.Exit(1)
+	}
+
+	accounts, err := mgr.ListAccounts()
+	if err != nil {
+		if jsonOutput {
+			fmt.Fprintf(os.Stderr, `{"error": "failed to list accounts", "message": "%s"}%s`, err.Error(), "\n")
+		} else {
+			ui.DisplayError("Failed to list accounts", err)
+		}
+		os.Exit(1)
+	}
+
+	if len(accounts) == 0 {
+		if jsonOutput {
+			fmt.Fprintf(os.Stderr, `{"error": "no accounts found"}%s`, "\n")
+		} else {
+			color.Yellow("No accounts found. Please run 'ag-quota login' first.")
+		}
+		os.Exit(1)
+	}
+
+	if !jsonOutput {
+		fmt.Println()
+		fmt.Printf("Fetching quota for %d account(s)...\n", len(accounts))
+		fmt.Println()
+	}
+
+	// Fetch quota for each account
+	client := api.NewClient()
+	var quotaResults []*ui.AccountQuotaResult
+
+	for _, acc := range accounts {
+		if !jsonOutput {
+			fmt.Printf("  • %s... ", acc.Email)
+		}
+
+		quotaInfo, err := client.GetQuotaInfoForAccount(acc.Email)
+		if err != nil {
+			if !jsonOutput {
+				fmt.Println(color.RedString("✗"))
+				fmt.Printf("    Error: %v\n", err)
+			}
+			quotaResults = append(quotaResults, &ui.AccountQuotaResult{
+				Email: acc.Email,
+				Error: err.Error(),
+			})
+			continue
+		}
+
+		if !jsonOutput {
+			fmt.Println(color.GreenString("✓"))
+		}
+
+		quotaResults = append(quotaResults, &ui.AccountQuotaResult{
+			Email:        acc.Email,
+			QuotaSummary: quotaInfo,
+		})
+	}
+
+	if !jsonOutput {
+		fmt.Println()
+	}
+
+	// Display results
+	if jsonOutput {
+		if err := ui.DisplayAllAccountsQuotaJSON(quotaResults); err != nil {
+			fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		ui.DisplayAllAccountsQuota(quotaResults)
 	}
 }
 
@@ -205,6 +336,8 @@ func init() {
 
 	// Add flags
 	quotaCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+	quotaCmd.Flags().StringVar(&accountFlag, "account", "", "Check quota for specific account")
+	quotaCmd.Flags().BoolVar(&allFlag, "all", false, "Check quota for all accounts")
 }
 
 func main() {

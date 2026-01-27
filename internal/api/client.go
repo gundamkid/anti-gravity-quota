@@ -373,3 +373,55 @@ func (c *Client) GetQuotaInfo() (*models.QuotaSummary, error) {
 
 	return quotaSummary, nil
 }
+
+// GetQuotaInfoForAccount retrieves quota information for a specific account
+func (c *Client) GetQuotaInfoForAccount(email string) (*models.QuotaSummary, error) {
+	// Load token for the specific account
+	token, err := auth.LoadTokenForAccount(email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load token for %s: %w", email, err)
+	}
+
+	// Validate token
+	if !token.IsValid() {
+		return nil, fmt.Errorf("token for %s is expired or invalid", email)
+	}
+
+	// Get valid access token (refresh if needed)
+	accessToken, err := auth.GetValidTokenForAccount(email, auth.GetOAuthConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get valid token for %s: %w", email, err)
+	}
+
+	// Set token for this client
+	c.SetToken(accessToken)
+
+	// First, resolve project ID (this handles onboarding if needed)
+	_, err = c.ResolveProjectID()
+	if err != nil {
+		fmt.Printf("DEBUG: ResolveProjectID failed for %s: %v\n", email, err)
+		// Not a fatal error, continue without project ID
+	}
+
+	// Fetch available models
+	modelsResp, err := c.FetchAvailableModels()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch models for %s: %w", email, err)
+	}
+
+	// Convert to QuotaSummary
+	quotaSummary := &models.QuotaSummary{
+		ProjectID:      c.projectID,
+		DefaultModelID: modelsResp.DefaultAgentModel,
+		FetchedAt:      time.Now(),
+		Email:          email,
+		Models:         make([]models.ModelQuota, 0, len(modelsResp.Models)),
+	}
+
+	// Convert models to ModelQuota
+	for modelID, model := range modelsResp.Models {
+		quotaSummary.Models = append(quotaSummary.Models, model.ToModelQuota(modelID))
+	}
+
+	return quotaSummary, nil
+}
