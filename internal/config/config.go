@@ -5,11 +5,78 @@ import (
 	"path/filepath"
 )
 
+// AtomicWrite writes data to a file atomically by writing to a temp file first and then renaming it.
+func AtomicWrite(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".tmp-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+
+	// Clean up on error
+	defer func() {
+		if err != nil {
+			os.Remove(tmpName)
+		}
+	}()
+
+	if _, err = tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+
+	if err = os.Chmod(tmpName, perm); err != nil {
+		return err
+	}
+
+	return os.Rename(tmpName, path)
+}
+
 const (
 	AppName        = "ag-quota"
-	TokenFileName  = "token.json"
+	TokenFileName  = "token.json" // Deprecated: use accounts/{email}.json
 	ConfigFileName = "config.json"
+	AccountsDir    = "accounts"
 )
+
+// GetAccountsDir returns the directory where account tokens are stored
+func GetAccountsDir() (string, error) {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(configDir, AccountsDir), nil
+}
+
+// EnsureAccountsDir creates the accounts directory if it doesn't exist
+func EnsureAccountsDir() (string, error) {
+	accountsDir, err := GetAccountsDir()
+	if err != nil {
+		return "", err
+	}
+
+	// Create directory with 0700 permissions (owner only)
+	err = os.MkdirAll(accountsDir, 0700)
+	if err != nil {
+		return "", err
+	}
+
+	return accountsDir, nil
+}
+
+// GetAccountPath returns the full path to an account token file
+func GetAccountPath(email string) (string, error) {
+	accountsDir, err := GetAccountsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(accountsDir, email+".json"), nil
+}
 
 // GetConfigDir returns the configuration directory path
 // Uses XDG_CONFIG_HOME on Linux/Mac, falls back to ~/.config/ag-quota

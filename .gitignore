@@ -48,6 +48,7 @@ config.json
 
 # AI things 
 .claude/
+.agent/
 
 # OS files
 Thumbs.db

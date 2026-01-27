@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -174,12 +175,12 @@ func handleCallback(w http.ResponseWriter, r *http.Request, config *oauth2.Confi
 		return
 	}
 
-	// Get user email from ID token
-	email := ""
-	if idToken, ok := token.Extra("id_token").(string); ok {
-		// For now, we'll skip parsing the JWT
-		// In production, you'd decode the JWT to get email
-		_ = idToken
+	// Fetch user email from Google UserInfo API
+	email, err := fetchUserEmail(ctx, token.AccessToken)
+	if err != nil {
+		http.Error(w, "Failed to fetch user email", http.StatusInternalServerError)
+		resultChan <- LoginResult{Error: fmt.Errorf("failed to fetch user email: %w", err)}
+		return
 	}
 
 	// Create token data
@@ -190,6 +191,12 @@ func handleCallback(w http.ResponseWriter, r *http.Request, config *oauth2.Confi
 		http.Error(w, "Failed to save token", http.StatusInternalServerError)
 		resultChan <- LoginResult{Error: fmt.Errorf("failed to save token: %w", err)}
 		return
+	}
+
+	// Update default account if none set
+	mgr, _ := NewAccountManager()
+	if cfg, err := mgr.LoadConfig(); err == nil && cfg.DefaultAccount == "" {
+		mgr.SetDefaultAccount(email)
 	}
 
 	// Send success response
@@ -259,4 +266,35 @@ func openBrowser(url string) error {
 	}
 
 	return exec.Command(cmd, args...).Start()
+}
+
+// userInfo represents the response from Google UserInfo API
+type userInfo struct {
+	Email string `json:"email"`
+}
+
+// fetchUserEmail retrieves the user's email address using the access token
+func fetchUserEmail(ctx context.Context, accessToken string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch user info: status %d", resp.StatusCode)
+	}
+
+	var info userInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+
+	return info.Email, nil
 }

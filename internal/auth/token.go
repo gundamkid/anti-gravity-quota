@@ -20,51 +20,89 @@ type TokenData struct {
 	Email        string    `json:"email,omitempty"`
 }
 
-// SaveToken saves the token data to a JSON file
+// SaveToken saves the token data to the current default account
 func SaveToken(token *TokenData) error {
-	// Ensure config directory exists
-	if _, err := config.EnsureConfigDir(); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	// Get token file path
-	tokenPath, err := config.GetTokenPath()
+	mgr, err := NewAccountManager()
 	if err != nil {
-		return fmt.Errorf("failed to get token path: %w", err)
+		return err
 	}
 
-	// Marshal token to JSON
+	cfg, err := mgr.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	email := token.Email
+	if email == "" {
+		email = cfg.DefaultAccount
+	}
+
+	if email == "" {
+		// If no email provided and no default, we can't save in the new format yet
+		// This should only happen during initial login or before migration
+		// For now, let's just use the old fallback if it exists, or error
+		return fmt.Errorf("no email provided and no default account set")
+	}
+
+	return SaveTokenForAccount(email, token)
+}
+
+// LoadToken loads the token data from the current default account
+func LoadToken() (*TokenData, error) {
+	mgr, err := NewAccountManager()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := mgr.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.DefaultAccount == "" {
+		return nil, fmt.Errorf("no default account set. please login first")
+	}
+
+	return LoadTokenForAccount(cfg.DefaultAccount)
+}
+
+// SaveTokenForAccount saves token data for a specific account
+func SaveTokenForAccount(email string, token *TokenData) error {
+	if _, err := config.EnsureAccountsDir(); err != nil {
+		return err
+	}
+
+	tokenPath, err := config.GetAccountPath(email)
+	if err != nil {
+		return err
+	}
+
+	// Ensure email is set in token
+	token.Email = email
+
 	data, err := json.MarshalIndent(token, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal token: %w", err)
 	}
 
-	// Write to file with 0600 permissions (owner only)
-	err = os.WriteFile(tokenPath, data, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to write token file: %w", err)
-	}
-
-	return nil
+	return config.AtomicWrite(tokenPath, data, 0600)
 }
 
-// LoadToken loads the token data from the JSON file
-func LoadToken() (*TokenData, error) {
-	tokenPath, err := config.GetTokenPath()
+// LoadTokenForAccount loads token data for a specific account
+func LoadTokenForAccount(email string) (*TokenData, error) {
+	tokenPath, err := config.GetAccountPath(email)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get token path: %w", err)
+		return nil, err
 	}
 
-	// Read token file
 	data, err := os.ReadFile(tokenPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("not logged in: token file not found")
+			return nil, fmt.Errorf("token for account %s not found", email)
 		}
 		return nil, fmt.Errorf("failed to read token file: %w", err)
 	}
 
-	// Unmarshal token
 	var token TokenData
 	err = json.Unmarshal(data, &token)
 	if err != nil {
