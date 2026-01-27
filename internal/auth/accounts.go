@@ -152,3 +152,32 @@ func (m *AccountManager) SetDefaultAccount(email string) error {
 	cfg.DefaultAccount = email
 	return m.SaveConfig(cfg)
 }
+
+// RemoveAccount deletes an account's token and clears it from config if it was default
+func (m *AccountManager) RemoveAccount(email string) error {
+	path, err := config.GetAccountPath(email)
+	if err != nil {
+		return err
+	}
+
+	// Remove token file
+	if err := os.Remove(path); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%w: %s", ErrAccountNotFound, email)
+		}
+		return fmt.Errorf("failed to delete account token: %w", err)
+	}
+
+	// Update config if it was the default account
+	cfg, err := m.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	if cfg.DefaultAccount == email {
+		cfg.DefaultAccount = ""
+		return m.SaveConfig(cfg)
+	}
+
+	return nil
+}

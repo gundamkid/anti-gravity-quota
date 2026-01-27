@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -211,37 +213,48 @@ func runQuotaForAllAccounts() {
 		fmt.Println()
 	}
 
-	// Fetch quota for each account
+	// Fetch quota for each account in parallel
 	client := api.NewClient()
-	var quotaResults []*ui.AccountQuotaResult
+	resultsChan := make(chan *ui.AccountQuotaResult, len(accounts))
+	var wg sync.WaitGroup
 
 	for _, acc := range accounts {
-		if !jsonOutput {
-			fmt.Printf("  • %s... ", acc.Email)
-		}
+		wg.Add(1)
+		go func(email string) {
+			defer wg.Done()
 
-		quotaInfo, err := client.GetQuotaInfoForAccount(acc.Email)
-		if err != nil {
-			if !jsonOutput {
-				fmt.Println(color.RedString("✗"))
-				fmt.Printf("    Error: %v\n", err)
+			quotaInfo, err := client.GetQuotaInfoForAccount(email)
+			if err != nil {
+				resultsChan <- &ui.AccountQuotaResult{
+					Email: email,
+					Error: err.Error(),
+				}
+				return
 			}
-			quotaResults = append(quotaResults, &ui.AccountQuotaResult{
-				Email: acc.Email,
-				Error: err.Error(),
-			})
-			continue
-		}
 
-		if !jsonOutput {
-			fmt.Println(color.GreenString("✓"))
-		}
-
-		quotaResults = append(quotaResults, &ui.AccountQuotaResult{
-			Email:        acc.Email,
-			QuotaSummary: quotaInfo,
-		})
+			resultsChan <- &ui.AccountQuotaResult{
+				Email:        email,
+				QuotaSummary: quotaInfo,
+			}
+		}(acc.Email)
 	}
+
+	// Close channel when all goroutines are done
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
+	// Collect results
+	var quotaResults []*ui.AccountQuotaResult
+	for result := range resultsChan {
+		quotaResults = append(quotaResults, result)
+	}
+
+	// Sort results by email to keep consistent output
+	sort.Slice(quotaResults, func(i, j int) bool {
+		return quotaResults[i].Email < quotaResults[j].Email
+	})
 
 	if !jsonOutput {
 		fmt.Println()
@@ -341,6 +354,11 @@ func init() {
 }
 
 func main() {
+	// Perform migration if needed (from single-account to multi-account format)
+	if err := auth.MigrateIfNeeded(); err != nil {
+		fmt.Fprintf(os.Stderr, "Migration warning: %v\n", err)
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

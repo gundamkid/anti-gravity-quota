@@ -19,7 +19,8 @@ var accountsCmd = &cobra.Command{
 Examples:
   ag-quota accounts list              # List all saved accounts
   ag-quota accounts default user@gmail.com  # Set default account
-  ag-quota accounts switch user@gmail.com   # Alias for default`,
+  ag-quota accounts switch user@gmail.com   # Alias for default
+  ag-quota accounts remove user@gmail.com   # Remove account`,
 	RunE: runAccountsList, // Default action: list accounts
 }
 
@@ -39,6 +40,15 @@ var accountsDefaultCmd = &cobra.Command{
 	Long:    `Set a saved account as the default account. Commands will use this account if none is specified.`,
 	Args:    cobra.ExactArgs(1),
 	RunE:    runAccountsDefault,
+}
+
+// accountsRemoveCmd represents the accounts remove command
+var accountsRemoveCmd = &cobra.Command{
+	Use:   "remove <email>",
+	Short: "Remove a saved account",
+	Long:  `Delete the saved authentication token for the specified account.`,
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAccountsRemove,
 }
 
 // runAccountsList handles listing all saved accounts
@@ -89,6 +99,38 @@ func runAccountsDefault(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// runAccountsRemove handles removing a saved account
+func runAccountsRemove(cmd *cobra.Command, args []string) error {
+	email := args[0]
+
+	mgr, err := auth.NewAccountManager()
+	if err != nil {
+		return fmt.Errorf("failed to initialize account manager: %w", err)
+	}
+
+	// For simplicity, we skip confirmation for now, or we could add a --force flag.
+	// But let's follow standard CLI practice if we can.
+	// Simple confirmation for now.
+	fmt.Printf("Are you sure you want to remove account %s? (y/N): ", email)
+	var response string
+	fmt.Scanln(&response)
+	if response != "y" && response != "Y" {
+		fmt.Println("Aborted.")
+		return nil
+	}
+
+	if err := mgr.RemoveAccount(email); err != nil {
+		if errors.Is(err, auth.ErrAccountNotFound) {
+			fmt.Printf("Account %s not found.\n", email)
+			return nil
+		}
+		return fmt.Errorf("failed to remove account: %w", err)
+	}
+
+	fmt.Printf("✅ Account %s removed successfully.\n", email)
+	return nil
+}
+
 func init() {
 	// Add accounts command to root
 	rootCmd.AddCommand(accountsCmd)
@@ -96,4 +138,5 @@ func init() {
 	// Add subcommands to accounts
 	accountsCmd.AddCommand(accountsListCmd)
 	accountsCmd.AddCommand(accountsDefaultCmd)
+	accountsCmd.AddCommand(accountsRemoveCmd)
 }
