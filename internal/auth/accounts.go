@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,11 @@ import (
 	"time"
 
 	"github.com/gundamkid/anti-gravity-quota/internal/config"
+)
+
+var (
+	// ErrAccountNotFound is returned when an account cannot be found
+	ErrAccountNotFound = errors.New("account not found")
 )
 
 // AccountInfo represents metadata about a saved account
@@ -133,7 +139,7 @@ func (m *AccountManager) SetDefaultAccount(email string) error {
 	}
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("account %s not found: %w", email, err)
+			return fmt.Errorf("%w: %s", ErrAccountNotFound, email)
 		}
 		return err
 	}
