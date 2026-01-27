@@ -226,13 +226,18 @@ If the browser doesn't open automatically, copy and paste the URL shown in the t
 
 ```bash
 # Build for current platform
+make build
+# or
 go build -o ag-quota ./cmd/ag-quota
+```
 
-# Build for all platforms
-GOOS=linux GOARCH=amd64 go build -o ag-quota-linux-amd64 ./cmd/ag-quota
-GOOS=darwin GOARCH=amd64 go build -o ag-quota-darwin-amd64 ./cmd/ag-quota
-GOOS=darwin GOARCH=arm64 go build -o ag-quota-darwin-arm64 ./cmd/ag-quota
-GOOS=windows GOARCH=amd64 go build -o ag-quota-windows-amd64.exe ./cmd/ag-quota
+### Testing
+
+```bash
+# Run all tests
+make test
+# or
+go test -v ./...
 ```
 
 ### Project Structure

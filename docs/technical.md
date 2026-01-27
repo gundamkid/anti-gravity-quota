@@ -253,6 +253,31 @@ const MaxRetryAttempts = 3
 
 ## 🧪 Testing
 
+### Automated Testing
+
+Dự án sử dụng bộ test chuẩn của Go để đảm bảo tính ổn định của các module cốt lõi.
+
+#### 1. Chạy toàn bộ tests
+Sử dụng Makefile để chạy toàn bộ tests một cách nhanh chóng:
+```bash
+make test
+```
+Hoặc dùng lệnh Go trực tiếp:
+```bash
+go test -v ./...
+```
+
+#### 2. Chiến lược Testing
+- **Unit Tests**: Kiểm tra logic của các hàm xử lý dữ liệu (`internal/models`, `internal/ui`).
+- **Mocking**: Sử dụng `net/http/httptest` để giả lập API của Google Cloud Code (`internal/api`).
+- **Browser-less Auth**: Kiểm tra logic trao đổi token và PKCE mà không cần mở trình duyệt thật (`internal/auth`).
+
+#### 3. Test Coverage
+Để kiểm tra độ bao phủ của code:
+```bash
+go test -cover ./...
+```
+
 ### Manual API Test
 
 ```bash
