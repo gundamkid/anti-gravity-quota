@@ -5,7 +5,8 @@ A lightweight CLI tool to monitor your Anti-Gravity (Claude Code) AI model quota
 ## Features
 
 - ✅ **Check Quota** - View quota for all AI models (Claude 4 Opus/Sonnet, Gemini 3 Flash/Pro)
-- 🔐 **Secure Auth** - Google OAuth2 with PKCE flow
+- � **Multiple Accounts** - Support for multiple Google accounts with easy switching
+- �🔐 **Secure Auth** - Google OAuth2 with PKCE flow
 - 📊 **Pretty Output** - Colored tables with visual progress bars
 - 🔄 **Auto-Refresh** - Automatic token refresh when expired
 - 📝 **JSON Output** - Machine-readable format for scripting
@@ -27,14 +28,17 @@ go install github.com/gundamkid/anti-gravity-quota/cmd/ag-quota@latest
 # Login with Google account
 ag-quota login
 
-# Check quota for all models
+# Check quota for default account
 ag-quota
 
-# Check authentication status
-ag-quota status
+# List all saved accounts
+ag-quota accounts list
 
-# Logout
-ag-quota logout
+# Switch default account
+ag-quota accounts switch user@gmail.com
+
+# Check quota for all accounts at once
+ag-quota quota --all
 ```
 
 ## Usage
@@ -68,6 +72,35 @@ $ ag-quota
 - ✓ OK (green) - Quota above 10%
 - ⚠ LOW (yellow) - Quota at or below 10%
 - ✗ EMPTY (red) - Quota exhausted
+
+### Multi-Account Support
+
+Check quota for a specific account:
+
+```bash
+ag-quota quota --account user@gmail.com
+```
+
+Check quota for **all** saved accounts at once:
+
+```bash
+ag-quota quota --all
+```
+
+### Account Management
+
+Manage your saved Google accounts:
+
+```bash
+# List all saved accounts
+ag-quota accounts list
+
+# Set the default account
+ag-quota accounts default user@gmail.com
+
+# Quickly switch between accounts (alias for default)
+ag-quota accounts switch another@gmail.com
+```
 
 ### JSON Output
 
@@ -144,8 +177,11 @@ $ ag-quota logout
 
 | Command | Description | Flags |
 |---------|-------------|-------|
-| `ag-quota` | Check quota for all models (default) | `--json, -j` |
-| `ag-quota quota` | Check quota for all models | `--json, -j` |
+| `ag-quota` | Check quota (default account) | `--json, -j` |
+| `ag-quota quota` | Check quota | `--account, --all, --json` |
+| `ag-quota accounts list` | List all saved accounts | |
+| `ag-quota accounts default` | Set the default account | |
+| `ag-quota accounts switch` | Alias for `accounts default` | |
 | `ag-quota login` | Authenticate with Google account | |
 | `ag-quota status` | Show authentication status | |
 | `ag-quota logout` | Clear stored tokens | |
