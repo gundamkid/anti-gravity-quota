@@ -176,7 +176,7 @@ client_id=<client_id>
 
 ## 📁 Data Structures
 
-### Token Storage (`~/.config/ag-quota/token.json`)
+### Account Tokens (`~/.config/ag-quota/accounts/{email}.json`)
 
 ```json
 {
@@ -185,6 +185,14 @@ client_id=<client_id>
   "token_type": "Bearer",
   "expiry": "2026-01-26T08:00:00Z",
   "email": "user@gmail.com"
+}
+```
+
+### Application Config (`~/.config/ag-quota/config.json`)
+
+```json
+{
+  "default_account": "user@gmail.com"
 }
 ```
 
@@ -246,8 +254,21 @@ const MaxRetryAttempts = 3
 
 | File | Description |
 |------|-------------|
-| `token.json` | OAuth tokens (chmod 600) |
-| `config.json` | User preferences (future) |
+| `config.json` | Global application configuration (default account, etc.) |
+| `accounts/` | Directory containing OAuth tokens per email (chmod 600) |
+| `token.json` | (Deprecated) Old token storage |
+
+---
+
+## 🛠️ Account Management
+
+CLI hỗ trợ quản lý nhiều tài khoản Google cùng lúc thông qua các lệnh sub-command của `accounts`:
+
+| Command | Description |
+|---------|-------------|
+| `ag-quota accounts list` | Liệt kê tất cả tài khoản đã lưu và trạng thái token |
+| `ag-quota accounts default <email>` | Thiết lập tài khoản mặc định cho các lệnh tiếp theo |
+| `ag-quota accounts switch <email>` | Alias của lệnh `default` giúp chuyển nhanh giữa các account |
 
 ---
 
