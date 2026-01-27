@@ -112,9 +112,23 @@ func LoadTokenForAccount(email string) (*TokenData, error) {
 	return &token, nil
 }
 
-// DeleteToken removes the stored token file
+// DeleteToken removes the stored token file for the current default account
 func DeleteToken() error {
-	tokenPath, err := config.GetTokenPath()
+	mgr, err := NewAccountManager()
+	if err != nil {
+		return err
+	}
+
+	cfg, err := mgr.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	if cfg.DefaultAccount == "" {
+		return nil // Nothing to delete
+	}
+
+	tokenPath, err := config.GetAccountPath(cfg.DefaultAccount)
 	if err != nil {
 		return fmt.Errorf("failed to get token path: %w", err)
 	}

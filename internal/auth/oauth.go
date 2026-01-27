@@ -193,11 +193,9 @@ func handleCallback(w http.ResponseWriter, r *http.Request, config *oauth2.Confi
 		return
 	}
 
-	// Update default account if none set
+	// Set the logged-in account as default
 	mgr, _ := NewAccountManager()
-	if cfg, err := mgr.LoadConfig(); err == nil && cfg.DefaultAccount == "" {
-		mgr.SetDefaultAccount(email)
-	}
+	mgr.SetDefaultAccount(email)
 
 	// Send success response
 	w.Header().Set("Content-Type", "text/html")
