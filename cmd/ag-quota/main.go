@@ -214,7 +214,6 @@ func runQuotaForAllAccounts() {
 	}
 
 	// Fetch quota for each account in parallel
-	client := api.NewClient()
 	resultsChan := make(chan *ui.AccountQuotaResult, len(accounts))
 	var wg sync.WaitGroup
 
@@ -223,6 +222,9 @@ func runQuotaForAllAccounts() {
 		go func(email string) {
 			defer wg.Done()
 
+			// Create a new client per goroutine to avoid race conditions
+			// as the client holds account-specific state (tokens).
+			client := api.NewClient()
 			quotaInfo, err := client.GetQuotaInfoForAccount(email)
 			if err != nil {
 				resultsChan <- &ui.AccountQuotaResult{
