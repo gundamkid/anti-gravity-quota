@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2026-01-28
+
+### 🚀 Features
+
+- **Multiple Account Support**: Manage multiple Google accounts simultaneously.
+  - `ag-quota accounts list`: View all saved accounts.
+  - `ag-quota accounts switch <email>`: Quickly switch between accounts.
+  - `ag-quota accounts remove <email>`: Delete specific accounts from storage.
+- **Batched Quota Check**: Added `ag-quota quota --all` to check quotas for all saved accounts in parallel.
+- **Targeted Quota**: Added `--account` flag to check quota for a specific email without switching context.
+
+### 🐛 Bug Fixes
+
+- **Login Flow**: Fixed issue where users were not correctly recognized as logged in immediately after authentication.
+- **Race Condition**: Fixed critical bug in `quota --all` where concurrent checks caused token conflicts (AGQ-12).
+
+### 🛠 Improvements
+
+- **Performance**: Optimized multi-account quota fetching with concurrent goroutines.
+- **Documentation**: Updated README with comprehensive account management guides.
+
 ## [0.1.0] - 2026-01-26
 
 ### 🚀 Features

@@ -100,6 +100,9 @@ ag-quota accounts default user@gmail.com
 
 # Quickly switch between accounts (alias for default)
 ag-quota accounts switch another@gmail.com
+
+# Remove an account
+ag-quota accounts remove old@user.com
 ```
 
 ### JSON Output
@@ -182,6 +185,7 @@ $ ag-quota logout
 | `ag-quota accounts list` | List all saved accounts | |
 | `ag-quota accounts default` | Set the default account | |
 | `ag-quota accounts switch` | Alias for `accounts default` | |
+| `ag-quota accounts remove` | Remove a saved account | |
 | `ag-quota login` | Authenticate with Google account | |
 | `ag-quota status` | Show authentication status | |
 | `ag-quota logout` | Clear stored tokens | |
