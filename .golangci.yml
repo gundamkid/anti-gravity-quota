@@ -10,6 +10,9 @@ linters-settings:
       - fmt.Fprintln
   golint:
     min-confidence: 0.8
+  govet:
+    enable:
+      - shadow
   gofmt:
     simplify: true
 
@@ -24,7 +27,6 @@ linters:
     - unused
     - gofmt
     - misspell
-    - shadow # Use shadow instead of check-shadowing in govet
 
 run:
   timeout: 5m
