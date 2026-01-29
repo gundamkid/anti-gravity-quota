@@ -14,23 +14,23 @@ import (
 // MigrateIfNeeded checks if a migration from single-account format (token.json)
 // to multi-account format (accounts/email.json) is needed, and performs it if so.
 func MigrateIfNeeded() error {
-	tokenPath, err := config.GetTokenPath()
-	if err != nil {
+	tokenPath, errToken := config.GetTokenPath()
+	if errToken != nil {
 		return nil // Ignore error here, we'll hit it elsewhere if it's real
 	}
 
 	// 1. Check if old token.json exists
-	if _, err := os.Stat(tokenPath); os.IsNotExist(err) {
+	if _, errStat := os.Stat(tokenPath); os.IsNotExist(errStat) {
 		return nil // No old token, no migration needed
 	}
 
-	accountsDir, err := config.GetAccountsDir()
-	if err != nil {
+	accountsDir, errAcc := config.GetAccountsDir()
+	if errAcc != nil {
 		return nil
 	}
 
 	// 2. Check if accounts directory already exists and is not empty
-	if entries, err := os.ReadDir(accountsDir); err == nil && len(entries) > 0 {
+	if entries, errRead := os.ReadDir(accountsDir); errRead == nil && len(entries) > 0 {
 		// Accounts already exist, assume migration happened or user already used multi-account
 		return nil
 	}
@@ -38,46 +38,47 @@ func MigrateIfNeeded() error {
 	fmt.Println(color.CyanString("🔄 Migrating from single account to multi-account format..."))
 
 	// 3. Load old token
-	data, err := os.ReadFile(tokenPath)
-	if err != nil {
-		return fmt.Errorf("failed to read old token for migration: %w", err)
+	data, errFile := os.ReadFile(tokenPath)
+	if errFile != nil {
+		return fmt.Errorf("failed to read old token for migration: %w", errFile)
 	}
 
 	var token TokenData
-	if err := json.Unmarshal(data, &token); err != nil {
-		return fmt.Errorf("failed to parse old token for migration: %w", err)
+	if errUnmarshal := json.Unmarshal(data, &token); errUnmarshal != nil {
+		return fmt.Errorf("failed to parse old token for migration: %w", errUnmarshal)
 	}
 
 	// 4. Ensure we have an email
 	email := token.Email
 	if email == "" {
 		// If email is missing, we try to fetch it using the access token
-		email, err = fetchUserEmail(context.Background(), token.AccessToken)
-		if err != nil {
-			return fmt.Errorf("failed to fetch user email during migration: %w. please run 'ag-quota login' instead", err)
+		var errFetch error
+		email, errFetch = fetchUserEmail(context.Background(), token.AccessToken)
+		if errFetch != nil {
+			return fmt.Errorf("failed to fetch user email during migration: %w. please run 'ag-quota login' instead", errFetch)
 		}
 		token.Email = email
 	}
 
 	// 5. Migrate to accounts/{email}.json
-	if err := SaveTokenForAccount(email, &token); err != nil {
-		return fmt.Errorf("failed to save migrated token: %w", err)
+	if errSave := SaveTokenForAccount(email, &token); errSave != nil {
+		return fmt.Errorf("failed to save migrated token: %w", errSave)
 	}
 
 	// 6. Set as default in config.json
-	mgr, err := NewAccountManager()
-	if err != nil {
-		return fmt.Errorf("failed to initialize account manager during migration: %w", err)
+	mgr, errMgr := NewAccountManager()
+	if errMgr != nil {
+		return fmt.Errorf("failed to initialize account manager during migration: %w", errMgr)
 	}
 
-	if err := mgr.SetDefaultAccount(email); err != nil {
-		return fmt.Errorf("failed to set default account during migration: %w", err)
+	if errDef := mgr.SetDefaultAccount(email); errDef != nil {
+		return fmt.Errorf("failed to set default account during migration: %w", errDef)
 	}
 
 	// 7. Backup old token.json
 	backupPath := tokenPath + ".bak"
-	if err := os.Rename(tokenPath, backupPath); err != nil {
-		return fmt.Errorf("failed to backup old token: %w", err)
+	if errRen := os.Rename(tokenPath, backupPath); errRen != nil {
+		return fmt.Errorf("failed to backup old token: %w", errRen)
 	}
 
 	fmt.Println(color.GreenString("✅ Migration complete! Account %s is now your default.", email))

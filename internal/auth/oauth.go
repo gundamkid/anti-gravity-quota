@@ -76,7 +76,11 @@ func Login() error {
 	if err != nil {
 		return fmt.Errorf("failed to start listener: %w", err)
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
+	addr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		return fmt.Errorf("failed to get TCP address from listener")
+	}
+	port := addr.Port
 
 	// Update redirect URL with the actual port
 	oauthConfig.RedirectURL = fmt.Sprintf("http://127.0.0.1:%d/callback", port)
@@ -123,7 +127,9 @@ func Login() error {
 	// Shutdown server
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	server.Shutdown(ctx)
+	if err := server.Shutdown(ctx); err != nil {
+		fmt.Printf("Error shutting down server: %v\n", err)
+	}
 
 	if result.Error != nil {
 		return result.Error
@@ -194,12 +200,13 @@ func handleCallback(w http.ResponseWriter, r *http.Request, config *oauth2.Confi
 	}
 
 	// Set the logged-in account as default
-	mgr, _ := NewAccountManager()
-	mgr.SetDefaultAccount(email)
+	if mgr, err := NewAccountManager(); err == nil {
+		_ = mgr.SetDefaultAccount(email)
+	}
 
 	// Send success response
 	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, `
+	_, _ = fmt.Fprintf(w, `
 		<!DOCTYPE html>
 		<html>
 		<head>

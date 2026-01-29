@@ -292,6 +292,8 @@ anti-gravity-quota/
 │   ├── models/        # Data models
 │   └── ui/            # Display formatting
 ├── docs/              # Documentation
+│   ├── build-flow.md  # Build and CI/CD flow
+│   └── technical.md   # API & Technical details
 └── README.md
 ```
 

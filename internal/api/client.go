@@ -341,9 +341,6 @@ func (c *Client) GetQuotaInfo() (*models.QuotaSummary, error) {
 	if err != nil {
 		fmt.Printf("DEBUG: ResolveProjectID failed: %v\n", err)
 		// Not a fatal error, continue without project ID
-	} else {
-		// Log success for debugging
-		// fmt.Printf("DEBUG: Project ID resolved: %s\n", projectID)
 	}
 
 	// Fetch available models

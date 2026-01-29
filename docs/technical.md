@@ -315,3 +315,9 @@ Based on antigravity-usage source:
 - `claude-sonnet-4-5` → Claude family
 - `gemini-3-flash` → Gemini flash quota group
 - `gemini-3-pro-low` → Gemini pro quota group
+
+---
+
+## 🔗 Related Documents
+- [Build & Release Flow](build-flow.md)
+- [Project Plan](plan.md)

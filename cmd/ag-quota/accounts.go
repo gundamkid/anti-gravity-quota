@@ -113,7 +113,7 @@ func runAccountsRemove(cmd *cobra.Command, args []string) error {
 	// Simple confirmation for now.
 	fmt.Printf("Are you sure you want to remove account %s? (y/N): ", email)
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	if response != "y" && response != "Y" {
 		fmt.Println("Aborted.")
 		return nil

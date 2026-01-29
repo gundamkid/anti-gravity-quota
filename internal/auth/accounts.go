@@ -137,11 +137,11 @@ func (m *AccountManager) SetDefaultAccount(email string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
+	if _, errStat := os.Stat(path); errStat != nil {
+		if os.IsNotExist(errStat) {
 			return fmt.Errorf("%w: %s", ErrAccountNotFound, email)
 		}
-		return err
+		return errStat
 	}
 
 	cfg, err := m.LoadConfig()
@@ -161,11 +161,11 @@ func (m *AccountManager) RemoveAccount(email string) error {
 	}
 
 	// Remove token file
-	if err := os.Remove(path); err != nil {
-		if os.IsNotExist(err) {
+	if errRemove := os.Remove(path); errRemove != nil {
+		if os.IsNotExist(errRemove) {
 			return fmt.Errorf("%w: %s", ErrAccountNotFound, email)
 		}
-		return fmt.Errorf("failed to delete account token: %w", err)
+		return fmt.Errorf("failed to delete account token: %w", errRemove)
 	}
 
 	// Update config if it was the default account
