@@ -1,6 +1,13 @@
 linters-settings:
   errcheck:
     check-type-assertions: true
+    exclude-functions:
+      - fmt.Println
+      - fmt.Printf
+      - fmt.Print
+      - fmt.Fprint
+      - fmt.Fprintf
+      - fmt.Fprintln
   govet:
     check-shadowing: true
   golint:
