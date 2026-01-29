@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-01-29
+
+### 🚀 CI/CD & Automation
+- **GitHub Actions**: Integrated full CI/CD pipeline for automated testing and multi-platform distribution.
+- **Automated Releases**: Configured automated GitHub Releases upon version tagging.
+- **Multi-platform Build**: Updated build system to automatically support Linux (amd64/arm64), macOS (amd64/arm64), and Windows (amd64).
+
+### 🛠 Quality & Maintenance
+- **Linting**: Added comprehensive `golangci-lint` configuration and resolved multiple quality issues (variable shadowing, unhandled errors, type assertion safety).
+- **Go 1.25 Support**: Verified compatibility and optimized build flow for Go 1.25.1.
+- **Dynamic Versioning**: updated `build.sh` to dynamically extract version from `Makefile`.
+
+### 📄 Documentation
+- **Build Flow**: Added detailed `docs/build-flow.md` covering local development and CI/CD processes.
+- **Developer Rules**: Established strict verification rules for the development cycle.
+
 ## [0.1.1] - 2026-01-28
 
 ### 🚀 Features
