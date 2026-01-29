@@ -5,7 +5,8 @@
 
 set -e
 
-VERSION="0.1.0"
+# Extract version from Makefile
+VERSION=$(grep "^VERSION :=" Makefile | cut -d "=" -f 2 | xargs)
 APP_NAME="ag-quota"
 BUILD_DIR="dist"
 
