@@ -30,5 +30,4 @@ run:
   timeout: 5m
   issues-exit-code: 1
   tests: true
-  go: '1.24' # Force linter to treat code as 1.24 to avoid 1.25 mismatch
 
