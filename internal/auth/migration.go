@@ -20,7 +20,7 @@ func MigrateIfNeeded() error {
 	}
 
 	// 1. Check if old token.json exists
-	if _, err := os.Stat(tokenPath); os.IsNotExist(err) {
+	if _, errStat := os.Stat(tokenPath); os.IsNotExist(errStat) {
 		return nil // No old token, no migration needed
 	}
 
@@ -30,7 +30,7 @@ func MigrateIfNeeded() error {
 	}
 
 	// 2. Check if accounts directory already exists and is not empty
-	if entries, err := os.ReadDir(accountsDir); err == nil && len(entries) > 0 {
+	if entries, errRead := os.ReadDir(accountsDir); errRead == nil && len(entries) > 0 {
 		// Accounts already exist, assume migration happened or user already used multi-account
 		return nil
 	}
@@ -44,8 +44,8 @@ func MigrateIfNeeded() error {
 	}
 
 	var token TokenData
-	if err := json.Unmarshal(data, &token); err != nil {
-		return fmt.Errorf("failed to parse old token for migration: %w", err)
+	if errUnmarshal := json.Unmarshal(data, &token); errUnmarshal != nil {
+		return fmt.Errorf("failed to parse old token for migration: %w", errUnmarshal)
 	}
 
 	// 4. Ensure we have an email

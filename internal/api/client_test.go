@@ -19,7 +19,7 @@ func TestClient_doRequest(t *testing.T) {
 
 		// Return success response
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "ok"}`))
+		_, _ = w.Write([]byte(`{"status": "ok"}`))
 	}))
 	defer server.Close()
 
@@ -66,7 +66,7 @@ func TestClient_LoadCodeAssist(t *testing.T) {
 		resp := models.LoadCodeAssistResponse{
 			ProjectID: "test-project",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

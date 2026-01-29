@@ -76,7 +76,11 @@ func Login() error {
 	if err != nil {
 		return fmt.Errorf("failed to start listener: %w", err)
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
+	addr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		return fmt.Errorf("failed to get TCP address from listener")
+	}
+	port := addr.Port
 
 	// Update redirect URL with the actual port
 	oauthConfig.RedirectURL = fmt.Sprintf("http://127.0.0.1:%d/callback", port)
