@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.3] - 2026-01-29
+## [0.1.2] - 2026-01-29
 
 ### 🚀 CI/CD & Automation
 - **GitHub Actions**: Integrated full CI/CD pipeline for automated testing and multi-platform distribution.
