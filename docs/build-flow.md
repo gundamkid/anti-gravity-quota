@@ -4,6 +4,29 @@ This document describes the build, continuous integration, and release process f
 
 ---
 
+## 🛡️ Contribution & Branch Rules (Strict)
+
+To ensure code quality in this Open Source project, we enforce strict **Branch Protection Rules** on GitHub.
+
+### 1. Protected Branches
+*   **`master`**: Production-ready code. No direct pushes allowed.
+*   **`dev`**: Main development branch. No direct pushes allowed.
+
+### 2. Contribution Workflow
+1.  **Fork & Branch**: Create a feature branch from `dev` (e.g., `features/my-new-feature`).
+2.  **Pull Request (PR)**: Submit a PR to merge your branch into `dev`.
+3.  **Automated Checks**: The following CI/CD checks **MUST PASS** before merging:
+    *   ✅ **Test**: All unit tests passing.
+    *   ✅ **Lint**: Code style meets strict `golangci-lint` standards.
+    *   ✅ **Build**: Code compiles successfully on all platforms.
+4.  **Review**: At least 1 approval is required from maintainers.
+
+### 3. Merging
+*   Once checks pass and code is approved, squash and merge into `dev`.
+*   Maintainers will periodically merge `dev` into `master` for releases.
+
+---
+
 ## 💻 Local Development
 
 For local development and testing, use the provided `Makefile`.
@@ -41,14 +64,18 @@ The project uses GitHub Actions to automate testing and distribution. The workfl
 - **Git Tags (`v*`)**: Triggers the **Release** flow.
 - **Manual Trigger**: Use the "Run workflow" button in the GitHub Actions tab to test any branch.
 
-### 2. Jobs
-- **Test**: Runs `go test -v -race ./...` on Ubuntu.
-- **Lint**: Installs the latest `golangci-lint` from source (using Go 1.25.1) and runs comprehensive checks.
-- **Build**: Compiles binaries for:
-  - Linux (amd64, arm64)
-  - macOS (amd64, arm64)
-  - Windows (amd64)
-- **Release**: (Tag only) Collects build artifacts and creates a GitHub Release with auto-generated notes.
+### 2. Jobs Flow (Sequential)
+1.  **Lint**:
+    *   Runs first to ensure code quality and style.
+    *   Must pass strict `golangci-lint` checks.
+2.  **Test**:
+    *   Runs **only after Lint passes**.
+    *   Executes unit tests (`go test -v -race ./...`).
+    *   **Result**: This is the primary Status Check for PRs.
+3.  **Build & Release** (Tag Only):
+    *   Runs **only after Test passes** AND **only on Tags (`v*`)**.
+    *   Compiles binaries for all platforms (Linux, macOS, Windows).
+    *   Creates GitHub Release and uploads artifacts.
 
 ---
 
@@ -63,6 +90,8 @@ To publish a new version of `ag-quota`:
    - Ensure all features are merged into `master`.
 3. **Create and push a tag**:
    ```bash
+   git checkout master
+   git pull origin master
    git tag v0.1.2
    git push origin v0.1.2
    ```
