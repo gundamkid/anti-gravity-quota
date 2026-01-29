@@ -46,6 +46,8 @@ jobs:
             gofmt -d .
             exit 1
           fi
+      - name: Build verification
+        run: go build -v ./cmd/ag-quota
 
   build:
     name: Build
