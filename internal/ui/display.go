@@ -28,6 +28,13 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 	// Header
 	fmt.Println()
 	color.Cyan("  ✨ Anti-Gravity Quota Status")
+	if summary.Email != "" {
+		tier := summary.TierName
+		if tier == "" {
+			tier = "Free 📦"
+		}
+		fmt.Printf("  📧 %s [%s]\n", summary.Email, tier)
+	}
 	fmt.Println()
 
 	fmt.Printf("  Fetched: %s\n", summary.FetchedAt.Format("2006-01-02 15:04:05 MST"))
@@ -233,8 +240,12 @@ func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
 			continue
 		}
 
-		// Display account email
-		color.Cyan("  📧 %s", result.Email)
+		// Display account email and tier
+		tier := result.QuotaSummary.TierName
+		if tier == "" {
+			tier = "Free 📦"
+		}
+		color.Cyan("  📧 %s [%s]", result.Email, tier)
 		fmt.Println()
 
 		// Sort models by display name

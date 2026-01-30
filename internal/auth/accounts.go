@@ -20,6 +20,7 @@ var (
 // AccountInfo represents metadata about a saved account
 type AccountInfo struct {
 	Email      string    `json:"email"`
+	TierName   string    `json:"tier_name"`
 	IsDefault  bool      `json:"is_default"`
 	LastUsed   time.Time `json:"last_used"`
 	TokenValid bool      `json:"token_valid"`
@@ -74,12 +75,17 @@ func (m *AccountManager) ListAccounts() ([]AccountInfo, error) {
 
 		email := entry.Name()[:len(entry.Name())-len(".json")]
 
-		// Load token to check validity
+		// Load token to check validity and get tier
 		token, err := LoadTokenForAccount(email)
 		valid := err == nil && token.IsValid()
+		tier := ""
+		if err == nil {
+			tier = token.TierName
+		}
 
 		accounts = append(accounts, AccountInfo{
 			Email:      email,
+			TierName:   tier,
 			IsDefault:  email == appCfg.DefaultAccount,
 			TokenValid: valid,
 		})
