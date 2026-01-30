@@ -35,6 +35,7 @@ type Client struct {
 	baseURL    string
 	token      string
 	projectID  string
+	tierID     string
 }
 
 // NewClient creates a new Cloud Code API client
@@ -247,17 +248,25 @@ func (c *Client) OnboardUser(tierID string) (string, error) {
 	return "", fmt.Errorf("onboarding timed out")
 }
 
-// ResolveProjectID implements the full logic to get a project ID
-func (c *Client) ResolveProjectID() (string, error) {
+// ResolveProjectID implements the full logic to get a project ID and tier
+func (c *Client) ResolveProjectID() (string, string, error) {
 	// Step 1: Call loadCodeAssist
 	resp, err := c.LoadCodeAssist()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Step 2: Check if we already got it
 	if resp.ProjectID != "" {
-		return resp.ProjectID, nil
+		// We still need the tierID if possible
+		tierID := ""
+		if resp.PaidTier != nil {
+			tierID = resp.PaidTier.ID
+		} else if resp.CurrentTier != nil {
+			tierID = resp.CurrentTier.ID
+		}
+		c.tierID = tierID
+		return resp.ProjectID, tierID, nil
 	}
 
 	// Step 3: Determine Tier
@@ -289,20 +298,21 @@ func (c *Client) ResolveProjectID() (string, error) {
 	}
 
 	if tierID == "" {
-		return "", fmt.Errorf("cannot determine tier for onboarding")
+		return "", "", fmt.Errorf("cannot determine tier for onboarding")
 	}
 
 	// Step 4: Onboard
 	projectID, err := c.OnboardUser(tierID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if projectID != "" {
 		c.SetProjectID(projectID)
 	}
 
-	return projectID, nil
+	c.tierID = tierID
+	return projectID, tierID, nil
 }
 
 // FetchAvailableModels retrieves available models with quota information
@@ -337,11 +347,12 @@ func (c *Client) FetchAvailableModels() (*models.FetchAvailableModelsResponse, e
 // GetQuotaInfo retrieves complete quota information for all models
 func (c *Client) GetQuotaInfo() (*models.QuotaSummary, error) {
 	// First, resolve project ID (this handles onboarding if needed)
-	_, err := c.ResolveProjectID()
+	_, tierID, err := c.ResolveProjectID()
 	if err != nil {
 		fmt.Printf("DEBUG: ResolveProjectID failed: %v\n", err)
 		// Not a fatal error, continue without project ID
 	}
+	tierName := models.MapTierToName(tierID)
 
 	// Fetch available models
 	modelsResp, err := c.FetchAvailableModels()
@@ -352,15 +363,21 @@ func (c *Client) GetQuotaInfo() (*models.QuotaSummary, error) {
 	// Convert to QuotaSummary
 	quotaSummary := &models.QuotaSummary{
 		ProjectID:      c.projectID,
+		TierName:       tierName,
 		DefaultModelID: modelsResp.DefaultAgentModel,
 		FetchedAt:      time.Now(),
 		Models:         make([]models.ModelQuota, 0, len(modelsResp.Models)),
 	}
 
-	// Get email from token
+	// Get email from token and update tier in token file
 	token, err := auth.LoadToken()
 	if err == nil {
 		quotaSummary.Email = token.Email
+		// Update tier in token file if it changed or is empty
+		if token.TierName != tierName {
+			token.TierName = tierName
+			auth.SaveToken(token)
+		}
 	}
 
 	// Convert models to ModelQuota
@@ -394,10 +411,19 @@ func (c *Client) GetQuotaInfoForAccount(email string) (*models.QuotaSummary, err
 	c.SetToken(accessToken)
 
 	// First, resolve project ID (this handles onboarding if needed)
-	_, err = c.ResolveProjectID()
+	projectID, tierID, err := c.ResolveProjectID()
 	if err != nil {
 		fmt.Printf("DEBUG: ResolveProjectID failed for %s: %v\n", email, err)
 		// Not a fatal error, continue without project ID
+	} else if projectID != "" {
+		c.SetProjectID(projectID)
+	}
+	tierName := models.MapTierToName(tierID)
+
+	// Update tier in token file
+	if token.TierName != tierName {
+		token.TierName = tierName
+		auth.SaveTokenForAccount(email, token)
 	}
 
 	// Fetch available models
@@ -409,6 +435,7 @@ func (c *Client) GetQuotaInfoForAccount(email string) (*models.QuotaSummary, err
 	// Convert to QuotaSummary
 	quotaSummary := &models.QuotaSummary{
 		ProjectID:      c.projectID,
+		TierName:       tierName,
 		DefaultModelID: modelsResp.DefaultAgentModel,
 		FetchedAt:      time.Now(),
 		Email:          email,

@@ -20,7 +20,7 @@ func DisplayAccountsList(accounts []auth.AccountInfo) {
 	t.SetStyle(table.StyleColoredBright)
 
 	// Header
-	t.AppendHeader(table.Row{"", "Account", "Status"})
+	t.AppendHeader(table.Row{"", "Account", "Plan", "Status"})
 
 	// Rows
 	for _, acc := range accounts {
@@ -34,7 +34,7 @@ func DisplayAccountsList(accounts []auth.AccountInfo) {
 			status = color.RedString("✗ Expired")
 		}
 
-		t.AppendRow(table.Row{marker, acc.Email, status})
+		t.AppendRow(table.Row{marker, acc.Email, acc.TierName, status})
 	}
 
 	t.Render()

@@ -16,6 +16,7 @@ type ModelQuota struct {
 // QuotaSummary represents the complete quota information
 type QuotaSummary struct {
 	Email          string
+	TierName       string
 	ProjectID      string
 	Models         []ModelQuota
 	DefaultModelID string
@@ -133,4 +134,22 @@ func (q ModelQuota) GetStatusString() string {
 		return "LOW"
 	}
 	return "OK"
+}
+
+// MapTierToName maps a Tier ID to a human-readable name and emoji
+func MapTierToName(tierID string) string {
+	switch tierID {
+	case "GEMINI_ADVANCED", "GEMINI_ULTRA":
+		return "Ultra 🚀"
+	case "GEMINI_PRO", "CLAUDE_PRO":
+		return "Pro 💎"
+	case "":
+		return "Free 📦"
+	default:
+		// Attempt to guess if it contains PRO or ADVANCED
+		if tierID == "FREE" {
+			return "Free 📦"
+		}
+		return "Free 📦" // Default fallback
+	}
 }
