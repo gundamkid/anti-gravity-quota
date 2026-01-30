@@ -376,7 +376,9 @@ func (c *Client) GetQuotaInfo() (*models.QuotaSummary, error) {
 		// Update tier in token file if it changed or is empty
 		if token.TierName != tierName {
 			token.TierName = tierName
-			auth.SaveToken(token)
+			if saveErr := auth.SaveToken(token); saveErr != nil {
+				fmt.Printf("DEBUG: Failed to save updated tier for %s: %v\n", token.Email, saveErr)
+			}
 		}
 	}
 
@@ -423,7 +425,9 @@ func (c *Client) GetQuotaInfoForAccount(email string) (*models.QuotaSummary, err
 	// Update tier in token file
 	if token.TierName != tierName {
 		token.TierName = tierName
-		auth.SaveTokenForAccount(email, token)
+		if saveErr := auth.SaveTokenForAccount(email, token); saveErr != nil {
+			fmt.Printf("DEBUG: Failed to save updated tier for account %s: %v\n", email, saveErr)
+		}
 	}
 
 	// Fetch available models
