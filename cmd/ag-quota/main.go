@@ -298,7 +298,11 @@ func runStatus(cmd *cobra.Command, args []string) {
 	fmt.Println()
 
 	if token.Email != "" {
-		color.Green("✓ Logged in as: %s", token.Email)
+		tier := token.TierName
+		if tier == "" {
+			tier = "Free 📦 (Run 'ag-quota quota' to update)"
+		}
+		color.Green("✓ Logged in as: %s [%s]", token.Email, tier)
 	} else {
 		color.Green("✓ Logged in")
 	}

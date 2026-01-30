@@ -18,6 +18,7 @@ type TokenData struct {
 	TokenType    string    `json:"token_type"`
 	Expiry       time.Time `json:"expiry"`
 	Email        string    `json:"email,omitempty"`
+	TierName     string    `json:"tier_name,omitempty"`
 }
 
 // SaveToken saves the token data to the current default account

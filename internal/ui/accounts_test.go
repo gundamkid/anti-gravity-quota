@@ -17,6 +17,7 @@ func TestDisplayAccountsList(t *testing.T) {
 			accounts: []auth.AccountInfo{
 				{
 					Email:      "user@gmail.com",
+					TierName:   "Pro 💎",
 					IsDefault:  true,
 					LastUsed:   time.Now(),
 					TokenValid: true,
@@ -28,12 +29,14 @@ func TestDisplayAccountsList(t *testing.T) {
 			accounts: []auth.AccountInfo{
 				{
 					Email:      "default@gmail.com",
+					TierName:   "Ultra 🚀",
 					IsDefault:  true,
 					LastUsed:   time.Now(),
 					TokenValid: true,
 				},
 				{
 					Email:      "second@gmail.com",
+					TierName:   "Free 📦",
 					IsDefault:  false,
 					LastUsed:   time.Now().Add(-24 * time.Hour),
 					TokenValid: true,
