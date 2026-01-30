@@ -25,8 +25,8 @@ This project uses a simplified GitFlow branching strategy with two main branches
 3. **`features/<task-name>`** - Feature development
    - Format: `features/AGQ-7-switch-accounts`
    - Created from: `dev`
-   - Merged back to: `dev`
-   - Deleted after merge
+   - Merged back to: `dev` via Pull Request (PR)
+   - Deleted after PR is merged
 
 ---
 
@@ -80,7 +80,7 @@ Examples:
 
 ---
 
-### 3. Complete Feature
+### 3. Complete Feature (Create Pull Request)
 
 When feature is done and tested:
 
@@ -93,22 +93,24 @@ make test
 # turbo
 make build
 
-# Checkout dev and update
+# Push feature branch to remote
 # turbo
+git push origin features/AGQ-7-switch-accounts
+```
+
+**Rules for Merging:**
+1. **NEVER** push directly to `dev`.
+2. **ALWAY** create a Pull Request (PR) on GitHub from `features/*` to `dev`.
+3. Wait for CI (GitHub Actions) to pass and (optional) peer review.
+4. Merge the PR on GitHub (using "Squash and merge" preferred).
+5. After merge, update your local `dev` branch.
+
+```bash
+# Update local dev after PR merge
 git checkout dev
-# turbo
 git pull origin dev
-
-# Merge feature branch
-# turbo
-git merge features/AGQ-7-switch-accounts --no-edit
-
-# Push to remote
-git push origin dev
-
-# Delete feature branch (optional)
+# Delete local feature branch
 git branch -d features/AGQ-7-switch-accounts
-git push origin --delete features/AGQ-7-switch-accounts
 ```
 
 **Checklist before merge:**
@@ -173,8 +175,8 @@ For GitHub repository settings:
 - Do not allow force pushes
 
 ### `dev` branch:
-- Require status checks to pass
-- Allow direct pushes (for quick integration)
+- Require status checks to pass (mandatory build/test)
+- **Require Pull Request** before merging (No direct pushes)
 - Do not allow force pushes
 
 ---
@@ -185,7 +187,7 @@ For GitHub repository settings:
 |--------|---------|
 | Start feature | `git checkout dev && git pull && git checkout -b features/TASK-ID-name` |
 | Commit changes | `git commit -m "feat(TASK-ID): description"` |
-| Finish feature | `git checkout dev && git merge features/TASK-ID-name` |
+| Finish feature | `git push origin features/TASK-ID-name` & Create PR to `dev` |
 | Create release | `git checkout master && git merge dev && git tag v0.1.1` |
 
 ---

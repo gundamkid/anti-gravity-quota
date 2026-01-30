@@ -489,22 +489,17 @@ go vet ./...
 make test
 ```
 
-### Completing a Feature
+### Completing a Feature (Create Pull Request)
 
-**Checklist before merge:**
+**Checklist before PR:**
 - [ ] All tests passing (`make test`)
 - [ ] Code builds successfully (`make build`)
 - [ ] Code formatted (`go fmt ./...`)
-- [ ] No lint errors
-- [ ] Jira task updated
 
-**Merge to dev:**
-```bash
-git checkout dev
-git pull origin dev
-git merge features/AGQ-7-switch-accounts --no-edit
-git push origin dev
-```
+**Flow:**
+1. Push your feature branch: `git push origin features/AGQ-7-switch-accounts`
+2. Create Pull Request (PR) on GitHub from `features/*` to `dev`.
+3. **DO NOT** push directly to `dev` or `master`.
 
 ### Sprint Release (End of Sprint)
 
