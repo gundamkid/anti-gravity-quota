@@ -499,6 +499,9 @@ make test
 **Flow:**
 1. Push your feature branch: `git push origin features/AGQ-7-switch-accounts`
 2. Create Pull Request (PR) on GitHub from `features/*` to `dev`.
+   - **Title**: Exact Task Title from Jira.
+   - **Description**: Human-readable summary of what was changed/added.
+   - **Draft**: Create as a final PR, not a draft.
 3. **DO NOT** push directly to `dev` or `master`.
 
 ### Sprint Release (End of Sprint)

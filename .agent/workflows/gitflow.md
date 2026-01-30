@@ -101,9 +101,13 @@ git push origin features/AGQ-7-switch-accounts
 **Rules for Merging:**
 1. **NEVER** push directly to `dev`.
 2. **ALWAY** create a Pull Request (PR) on GitHub from `features/*` to `dev`.
-3. Wait for CI (GitHub Actions) to pass and (optional) peer review.
-4. Merge the PR on GitHub (using "Squash and merge" preferred).
-5. After merge, update your local `dev` branch.
+3. **PR Format Rules:**
+   - **Title**: Use the exact Task Title (e.g., `[Feat] Display Account Tier (Free/Pro/Ultra) in CLI`).
+   - **Description**: Provide a concise summary of updates (written for humans/users to understand).
+   - **Drafts**: Do NOT create Draft PRs; create final PRs ready for review.
+4. Wait for CI (GitHub Actions) to pass and (optional) peer review.
+5. Merge the PR on GitHub (using "Squash and merge" preferred).
+6. After merge, update your local `dev` branch.
 
 ```bash
 # Update local dev after PR merge
