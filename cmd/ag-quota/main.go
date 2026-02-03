@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -16,10 +18,11 @@ import (
 )
 
 var (
-	version     = "0.1.1"
-	jsonOutput  bool
-	accountFlag string
-	allFlag     bool
+	version       = "0.1.1"
+	jsonOutput    bool
+	accountFlag   string
+	allFlag       bool
+	watchInterval int
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -79,6 +82,54 @@ var logoutCmd = &cobra.Command{
 
 // runQuota handles the quota command
 func runQuota(cmd *cobra.Command, args []string) {
+	// Handle watch mode
+	if cmd.Flags().Changed("watch") {
+		if jsonOutput {
+			ui.DisplayError("Flag conflict", fmt.Errorf("--watch cannot be used with --json"))
+			os.Exit(1)
+		}
+
+		if watchInterval == 0 {
+			// If flag is present but value is 0, it means user just ran --watch
+			// or explicitly passed 0. We'll default to 5.
+			watchInterval = 5
+		}
+
+		if watchInterval < 1 {
+			ui.DisplayError("Invalid interval", fmt.Errorf("minimum watch interval is 1 minute"))
+			os.Exit(1)
+		}
+
+		// Setup signal handling for graceful exit
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+		ticker := time.NewTicker(time.Duration(watchInterval) * time.Minute)
+		defer ticker.Stop()
+
+		// Initial fetch
+		ui.DisplayWatchHeader(watchInterval)
+		fetchAndDisplayQuota()
+		ui.DisplayWatchFooter(time.Now())
+
+		for {
+			select {
+			case <-sigChan:
+				fmt.Println("\nStopping watch mode...")
+				return
+			case <-ticker.C:
+				ui.DisplayWatchHeader(watchInterval)
+				fetchAndDisplayQuota()
+				ui.DisplayWatchFooter(time.Now())
+			}
+		}
+	}
+
+	fetchAndDisplayQuota()
+}
+
+// fetchAndDisplayQuota is the core logic of runQuota separated for watch mode
+func fetchAndDisplayQuota() {
 	// Handle --all flag
 	if allFlag {
 		runQuotaForAllAccounts()
@@ -357,6 +408,8 @@ func init() {
 	quotaCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
 	quotaCmd.Flags().StringVar(&accountFlag, "account", "", "Check quota for specific account")
 	quotaCmd.Flags().BoolVar(&allFlag, "all", false, "Check quota for all accounts")
+	quotaCmd.Flags().IntVarP(&watchInterval, "watch", "w", 0, "Watch quota periodically (default 5m)")
+	quotaCmd.Flags().Lookup("watch").NoOptDefVal = "5"
 }
 
 func main() {
