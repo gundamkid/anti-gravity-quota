@@ -88,6 +88,13 @@ func runQuota(cmd *cobra.Command, args []string) {
 			ui.DisplayError("Flag conflict", fmt.Errorf("--watch cannot be used with --json"))
 			os.Exit(1)
 		}
+
+		if watchInterval == 0 {
+			// If flag is present but value is 0, it means user just ran --watch
+			// or explicitly passed 0. We'll default to 5.
+			watchInterval = 5
+		}
+
 		if watchInterval < 1 {
 			ui.DisplayError("Invalid interval", fmt.Errorf("minimum watch interval is 1 minute"))
 			os.Exit(1)
