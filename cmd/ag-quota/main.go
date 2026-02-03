@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	version     = "0.1.1"
-	jsonOutput  bool
-	accountFlag string
-	allFlag     bool
+	version       = "0.1.1"
+	jsonOutput    bool
+	accountFlag   string
+	allFlag       bool
+	watchInterval int
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -79,6 +80,33 @@ var logoutCmd = &cobra.Command{
 
 // runQuota handles the quota command
 func runQuota(cmd *cobra.Command, args []string) {
+	// Handle watch mode
+	if cmd.Flags().Changed("watch") {
+		if jsonOutput {
+			ui.DisplayError("Flag conflict", fmt.Errorf("--watch cannot be used with --json"))
+			os.Exit(1)
+		}
+		if watchInterval < 1 {
+			ui.DisplayError("Invalid interval", fmt.Errorf("minimum watch interval is 1 minute"))
+			os.Exit(1)
+		}
+
+		for {
+			ui.ClearTerminal()
+			fmt.Printf("Watching quota every %d minute(s). Last updated: %s\n", watchInterval, time.Now().Format("15:04:05"))
+
+			// Execute the actual quota logic
+			fetchAndDisplayQuota()
+
+			time.Sleep(time.Duration(watchInterval) * time.Minute)
+		}
+	}
+
+	fetchAndDisplayQuota()
+}
+
+// fetchAndDisplayQuota is the core logic of runQuota separated for watch mode
+func fetchAndDisplayQuota() {
 	// Handle --all flag
 	if allFlag {
 		runQuotaForAllAccounts()
@@ -357,6 +385,8 @@ func init() {
 	quotaCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
 	quotaCmd.Flags().StringVar(&accountFlag, "account", "", "Check quota for specific account")
 	quotaCmd.Flags().BoolVar(&allFlag, "all", false, "Check quota for all accounts")
+	quotaCmd.Flags().IntVarP(&watchInterval, "watch", "w", 0, "Watch quota periodically (default 5m)")
+	quotaCmd.Flags().Lookup("watch").NoOptDefVal = "5"
 }
 
 func main() {

@@ -13,6 +13,11 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
+// ClearTerminal clears the terminal screen
+func ClearTerminal() {
+	fmt.Print("\033[H\033[2J")
+}
+
 // DisplayQuotaSummaryJSON displays quota information in JSON format
 func DisplayQuotaSummaryJSON(summary *models.QuotaSummary) error {
 	data, err := json.MarshalIndent(summary, "", "  ")
