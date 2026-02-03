@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -91,14 +93,28 @@ func runQuota(cmd *cobra.Command, args []string) {
 			os.Exit(1)
 		}
 
+		// Setup signal handling for graceful exit
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+		ticker := time.NewTicker(time.Duration(watchInterval) * time.Minute)
+		defer ticker.Stop()
+
+		// Initial fetch
+		ui.ClearTerminal()
+		fmt.Printf("Watching quota every %d minute(s). Last updated: %s (Press Ctrl+C to stop)\n", watchInterval, time.Now().Format("15:04:05"))
+		fetchAndDisplayQuota()
+
 		for {
-			ui.ClearTerminal()
-			fmt.Printf("Watching quota every %d minute(s). Last updated: %s\n", watchInterval, time.Now().Format("15:04:05"))
-
-			// Execute the actual quota logic
-			fetchAndDisplayQuota()
-
-			time.Sleep(time.Duration(watchInterval) * time.Minute)
+			select {
+			case <-sigChan:
+				fmt.Println("\nStopping watch mode...")
+				return
+			case <-ticker.C:
+				ui.ClearTerminal()
+				fmt.Printf("Watching quota every %d minute(s). Last updated: %s (Press Ctrl+C to stop)\n", watchInterval, time.Now().Format("15:04:05"))
+				fetchAndDisplayQuota()
+			}
 		}
 	}
 
