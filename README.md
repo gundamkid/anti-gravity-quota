@@ -82,13 +82,17 @@ Monitor your quota in real-time with automatic refreshes. The terminal will clea
 ag-quota quota --watch
 
 # Watch with custom interval (e.g., every 10 minutes)
-ag-quota quota --watch 10
+# Note: Use '=' to specify a value for long flags
+ag-quota quota --watch=10
 
-# Use short flag
-ag-quota -w 2
+# Use short flag (no space or use '=')
+ag-quota -w2
+# or
+ag-quota -w=2
 ```
 
 **Note:**
+- **Flag Syntax**: When providing a custom value, use `--watch=N` or `-wN`. Using a space (e.g., `--watch 5`) might result in the default value being used.
 - **Minimum Interval**: 1 minute.
 - **Conflict**: `--watch` cannot be used with `--json`.
 
