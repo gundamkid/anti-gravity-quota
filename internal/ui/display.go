@@ -6,12 +6,18 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/gundamkid/anti-gravity-quota/internal/models"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
+
+// ClearTerminal clears the terminal screen
+func ClearTerminal() {
+	fmt.Print("\033[H\033[2J")
+}
 
 // DisplayQuotaSummaryJSON displays quota information in JSON format
 func DisplayQuotaSummaryJSON(summary *models.QuotaSummary) error {
@@ -315,4 +321,20 @@ func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
 		fmt.Println(indented)
 		fmt.Println()
 	}
+}
+
+// DisplayWatchHeader displays the header for watch mode
+func DisplayWatchHeader(interval int) {
+	ClearTerminal()
+	fmt.Println()
+	color.HiCyan("  👀 Anti-Gravity Quota - WATCH MODE ACTIVE")
+	color.HiBlack("  Interval: %dm | Auto-refreshing", interval)
+	fmt.Println()
+}
+
+// DisplayWatchFooter displays the footer for watch mode
+func DisplayWatchFooter(lastUpdated time.Time) {
+	fmt.Println()
+	color.HiBlack("  Refreshed at: %s", lastUpdated.Format("15:04:05"))
+	color.HiBlack("  Press Ctrl+C to exit")
 }
