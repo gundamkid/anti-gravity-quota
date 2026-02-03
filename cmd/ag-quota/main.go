@@ -404,12 +404,12 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(logoutCmd)
 
-	// Add flags
-	quotaCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
-	quotaCmd.Flags().StringVar(&accountFlag, "account", "", "Check quota for specific account")
-	quotaCmd.Flags().BoolVar(&allFlag, "all", false, "Check quota for all accounts")
-	quotaCmd.Flags().IntVarP(&watchInterval, "watch", "w", 0, "Watch quota periodically (default 5m)")
-	quotaCmd.Flags().Lookup("watch").NoOptDefVal = "5"
+	// Add flags to root asPersistentFlags so they are available to subcommands and when running root directly
+	rootCmd.PersistentFlags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+	rootCmd.PersistentFlags().StringVar(&accountFlag, "account", "", "Check quota for specific account")
+	rootCmd.PersistentFlags().BoolVar(&allFlag, "all", false, "Check quota for all accounts")
+	rootCmd.PersistentFlags().IntVarP(&watchInterval, "watch", "w", 0, "Watch quota periodically (default 5m)")
+	rootCmd.PersistentFlags().Lookup("watch").NoOptDefVal = "5"
 }
 
 func main() {

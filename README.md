@@ -9,6 +9,7 @@ A lightweight CLI tool to monitor your Anti-Gravity (Claude Code) AI model quota
 - �🔐 **Secure Auth** - Google OAuth2 with PKCE flow
 - 📊 **Pretty Output** - Colored tables with visual progress bars
 - 🔄 **Auto-Refresh** - Automatic token refresh when expired
+- ⏳ **Watch Mode** - Monitor quota in real-time with periodic refreshes
 - 📝 **JSON Output** - Machine-readable format for scripting
 - ⚡ **Fast & Simple** - Single binary, no dependencies
 
@@ -68,10 +69,31 @@ $ ag-quota
   ⭐ Default Model: Claude 4 Sonnet
 ```
 
-**Status Indicators:**
 - ✓ OK (green) - Quota above 10%
 - ⚠ LOW (yellow) - Quota at or below 10%
 - ✗ EMPTY (red) - Quota exhausted
+
+### Watch Mode
+
+Monitor your quota in real-time with automatic refreshes. The terminal will clear and update periodically.
+
+```bash
+# Watch with default 5-minute interval
+ag-quota --watch
+
+# Watch with custom interval (e.g., every 10 minutes)
+# Note: Use '=' to specify a value for flags with optional defaults
+ag-quota --watch=10
+
+# Use short flag with '='
+ag-quota -w=2
+```
+
+**Note:**
+- **Flag Syntax**: Because `--watch` has an optional default value, you **must** use the `=` sign to provide a custom value (e.g., `--watch=10` or `-w=2`). Using a space (e.g., `--watch 10`) will result in the default 5-minute interval being used, as the value will be treated as a separate argument.
+- **Global Flags**: All quota flags (`--watch`, `--json`, `--all`, `--account`) are available globally and can be used directly with the `ag-quota` command.
+- **Minimum Interval**: 1 minute.
+- **Conflict**: `--watch` cannot be used with `--json`.
 
 ### Multi-Account Support
 
@@ -180,8 +202,8 @@ $ ag-quota logout
 
 | Command | Description | Flags |
 |---------|-------------|-------|
-| `ag-quota` | Check quota (default account) | `--json, -j` |
-| `ag-quota quota` | Check quota | `--account, --all, --json` |
+| `ag-quota` | Check quota (default account) | `--json, --watch` |
+| `ag-quota quota` | Check quota | `--account, --all, --json, --watch` |
 | `ag-quota accounts list` | List all saved accounts | |
 | `ag-quota accounts default` | Set the default account | |
 | `ag-quota accounts switch` | Alias for `accounts default` | |
