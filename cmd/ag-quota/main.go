@@ -169,6 +169,12 @@ func fetchAndDisplayQuota(ctx context.Context) {
 	// Get quota info
 	quotaInfo, err := client.GetQuotaInfo(ctx)
 	if err != nil {
+		// Suppress error messages if context was cancelled by user
+		if ctx.Err() != nil {
+			fmt.Println()
+			os.Exit(0)
+		}
+
 		if jsonOutput {
 			fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "message": "%s"}%s`, err.Error(), "\n")
 		} else {
@@ -208,6 +214,11 @@ func runQuotaForAccount(ctx context.Context, email string) {
 	client := api.NewClient()
 	quotaInfo, err := client.GetQuotaInfoForAccount(ctx, email)
 	if err != nil {
+		if ctx.Err() != nil {
+			fmt.Println()
+			os.Exit(0)
+		}
+
 		if jsonOutput {
 			fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "account": "%s", "message": "%s"}%s`, email, err.Error(), "\n")
 		} else {
@@ -305,12 +316,8 @@ func runQuotaForAllAccounts(ctx context.Context) {
 	if err := g.Wait(); err != nil {
 		// Only exit if the error is a context cancellation (e.g. Ctrl+C)
 		if ctx.Err() != nil {
-			if jsonOutput {
-				fmt.Fprintf(os.Stderr, `{"error": "cancelled"}%s`, "\n")
-			} else {
-				fmt.Println("\nOperation cancelled.")
-			}
-			os.Exit(1)
+			fmt.Println()
+			os.Exit(0)
 		}
 
 		// For other fatal errors that might still propagate
