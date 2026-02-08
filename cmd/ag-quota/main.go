@@ -289,17 +289,17 @@ func runQuotaForAllAccounts(ctx context.Context) {
 		g.Go(func() error {
 			// Create a new client per goroutine to avoid race conditions
 			client := api.NewClient()
-			quotaInfo, err := client.GetQuotaInfoForAccount(gCtx, email)
+			quotaInfo, apiErr := client.GetQuotaInfoForAccount(gCtx, email)
 
 			mu.Lock()
 			defer mu.Unlock()
 
-			if err != nil {
+			if apiErr != nil {
 				// Record individual account error instead of returning it to errgroup
 				// This prevents one bad account from stopping the entire --all fetch.
 				quotaResults[idx] = &ui.AccountQuotaResult{
 					Email: email,
-					Error: err.Error(),
+					Error: apiErr.Error(),
 				}
 				return nil
 			}
@@ -313,12 +313,13 @@ func runQuotaForAllAccounts(ctx context.Context) {
 	}
 
 	// Wait for completion. Fatal errors (cancellation) will still cause Wait to return error
-	if err := g.Wait(); err != nil {
-		// Only exit if the error is a context cancellation (e.g. Ctrl+C)
-		if ctx.Err() != nil {
-			fmt.Println()
-			os.Exit(0)
-		}
+	err = g.Wait()
+	if ctx.Err() != nil {
+		fmt.Println()
+		os.Exit(0)
+	}
+
+	if err != nil {
 
 		// For other fatal errors that might still propagate
 		if jsonOutput {
