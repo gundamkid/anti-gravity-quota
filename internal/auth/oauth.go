@@ -198,20 +198,22 @@ func handleCallback(w http.ResponseWriter, r *http.Request, config *oauth2.Confi
 	tokenData := FromOAuth2Token(token, email)
 
 	// Save token
-	if err := SaveToken(tokenData); err != nil {
+	err = SaveToken(tokenData)
+	if err != nil {
 		http.Error(w, "Failed to save token", http.StatusInternalServerError)
 		resultChan <- LoginResult{Error: fmt.Errorf("failed to save token: %w", err)}
 		return
 	}
 
 	// Set the logged-in account as default
-	if mgr, err := NewAccountManager(); err == nil {
+	if mgr, mErr := NewAccountManager(); mErr == nil {
 		_ = mgr.SetDefaultAccount(email)
 	}
 
 	// Send success response
 	w.Header().Set("Content-Type", "text/html")
-	tmpl, err := template.New("callback").Parse(callbackHTML)
+	var tmpl *template.Template
+	tmpl, err = template.New("callback").Parse(callbackHTML)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		resultChan <- LoginResult{Error: fmt.Errorf("failed to parse callback template: %w", err)}
@@ -224,7 +226,8 @@ func handleCallback(w http.ResponseWriter, r *http.Request, config *oauth2.Confi
 		Email: email,
 	}
 
-	if err := tmpl.Execute(w, data); err != nil {
+	err = tmpl.Execute(w, data)
+	if err != nil {
 		fmt.Printf("DEBUG: Failed to execute template: %v\n", err)
 	}
 
