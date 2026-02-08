@@ -105,7 +105,7 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 		t.AppendRow(table.Row{
 			model.DisplayName,
 			quotaColor.Sprint(quotaStr),
-			formatResetTime(model),
+			formatResetTime(model, summary.FetchedAt),
 			statusColor.Sprint(statusStr),
 		})
 	}
@@ -130,8 +130,8 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 }
 
 // formatResetTime formats the time until reset in a human-readable format
-func formatResetTime(model models.ModelQuota) string {
-	duration := model.GetTimeUntilReset()
+func formatResetTime(model models.ModelQuota, now time.Time) string {
+	duration := model.ResetTime.Sub(now)
 
 	if duration < 0 {
 		return "Regenerating..."
@@ -310,7 +310,7 @@ func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
 			t.AppendRow(table.Row{
 				model.DisplayName,
 				quotaColor.Sprint(quotaStr),
-				formatResetTime(model),
+				formatResetTime(model, result.QuotaSummary.FetchedAt),
 				statusColor.Sprint(statusStr),
 			})
 		}
