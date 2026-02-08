@@ -274,7 +274,7 @@ func runQuotaForAllAccounts(ctx context.Context) {
 	var mu sync.Mutex
 
 	for i, acc := range accounts {
-		i, email := i, acc.Email
+		idx, email := i, acc.Email
 		g.Go(func() error {
 			// Create a new client per goroutine to avoid race conditions
 			client := api.NewClient()
@@ -284,7 +284,7 @@ func runQuotaForAllAccounts(ctx context.Context) {
 			}
 
 			mu.Lock()
-			quotaResults[i] = &ui.AccountQuotaResult{
+			quotaResults[idx] = &ui.AccountQuotaResult{
 				Email:        email,
 				QuotaSummary: quotaInfo,
 			}
