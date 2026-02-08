@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -28,7 +29,7 @@ func TestClient_doRequest(t *testing.T) {
 		baseURL:    server.URL,
 	}
 
-	data, err := client.doRequest("GET", "/test", nil)
+	data, err := client.doRequest(context.Background(), "GET", "/test", nil)
 	if err != nil {
 		t.Fatalf("doRequest failed: %v", err)
 	}
@@ -76,7 +77,7 @@ func TestClient_LoadCodeAssist(t *testing.T) {
 		token:      "fake-token", // Set token to avoid EnsureAuthenticated logic which needs actual storage
 	}
 
-	resp, err := client.LoadCodeAssist()
+	resp, err := client.LoadCodeAssist(context.Background())
 	if err != nil {
 		t.Fatalf("LoadCodeAssist failed: %v", err)
 	}

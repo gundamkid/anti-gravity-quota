@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -64,14 +65,23 @@ func (c *Client) GetProjectID() string {
 }
 
 // doRequest performs an HTTP request with authentication headers and retry logic
-func (c *Client) doRequest(method, endpoint string, body interface{}) ([]byte, error) {
+func (c *Client) doRequest(ctx context.Context, method, endpoint string, body interface{}) ([]byte, error) {
 	var lastErr error
 
 	for attempt := 0; attempt <= MaxRetries; attempt++ {
+		// Check context before each attempt
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
 		if attempt > 0 {
-			// Exponential backoff
+			// Exponential backoff with context awareness
 			delay := RetryDelay * time.Duration(1<<uint(attempt-1))
-			time.Sleep(delay)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
 		}
 
 		// Marshal request body
@@ -86,7 +96,7 @@ func (c *Client) doRequest(method, endpoint string, body interface{}) ([]byte, e
 
 		// Create request
 		url := c.baseURL + endpoint
-		req, err := http.NewRequest(method, url, bodyReader)
+		req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %w", err)
 		}
@@ -101,6 +111,10 @@ func (c *Client) doRequest(method, endpoint string, body interface{}) ([]byte, e
 		// Perform request
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
+			// If context was cancelled, return immediately
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			lastErr = fmt.Errorf("request failed: %w", err)
 			continue
 		}
@@ -109,6 +123,9 @@ func (c *Client) doRequest(method, endpoint string, body interface{}) ([]byte, e
 		defer resp.Body.Close()
 		responseBody, err := io.ReadAll(resp.Body)
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			lastErr = fmt.Errorf("failed to read response: %w", err)
 			continue
 		}
@@ -180,7 +197,7 @@ func extractProjectId(value interface{}) string {
 }
 
 // LoadCodeAssist loads code assist status and retrieves project ID
-func (c *Client) LoadCodeAssist() (*models.LoadCodeAssistResponse, error) {
+func (c *Client) LoadCodeAssist(ctx context.Context) (*models.LoadCodeAssistResponse, error) {
 	if err := c.EnsureAuthenticated(); err != nil {
 		return nil, err
 	}
@@ -189,7 +206,7 @@ func (c *Client) LoadCodeAssist() (*models.LoadCodeAssistResponse, error) {
 		Metadata: models.GetDefaultMetadata(),
 	}
 
-	responseData, err := c.doRequest("POST", "/v1internal:loadCodeAssist", request)
+	responseData, err := c.doRequest(ctx, "POST", "/v1internal:loadCodeAssist", request)
 	if err != nil {
 		return nil, fmt.Errorf("loadCodeAssist failed: %w", err)
 	}
@@ -215,14 +232,14 @@ func (c *Client) LoadCodeAssist() (*models.LoadCodeAssistResponse, error) {
 }
 
 // OnboardUser attempts to onboard the user to get a project ID
-func (c *Client) OnboardUser(tierID string) (string, error) {
+func (c *Client) OnboardUser(ctx context.Context, tierID string) (string, error) {
 	request := models.OnboardUserRequest{
 		TierID:   tierID,
 		Metadata: models.GetDefaultMetadata(),
 	}
 
 	for attempt := 1; attempt <= 5; attempt++ {
-		responseData, err := c.doRequest("POST", "/v1internal:onboardUser", request)
+		responseData, err := c.doRequest(ctx, "POST", "/v1internal:onboardUser", request)
 		if err != nil {
 			return "", fmt.Errorf("onboardUser failed: %w", err)
 		}
@@ -249,9 +266,9 @@ func (c *Client) OnboardUser(tierID string) (string, error) {
 }
 
 // ResolveProjectID implements the full logic to get a project ID and tier
-func (c *Client) ResolveProjectID() (string, string, error) {
+func (c *Client) ResolveProjectID(ctx context.Context) (string, string, error) {
 	// Step 1: Call loadCodeAssist
-	resp, err := c.LoadCodeAssist()
+	resp, err := c.LoadCodeAssist(ctx)
 	if err != nil {
 		return "", "", err
 	}
@@ -302,7 +319,7 @@ func (c *Client) ResolveProjectID() (string, string, error) {
 	}
 
 	// Step 4: Onboard
-	projectID, err := c.OnboardUser(tierID)
+	projectID, err := c.OnboardUser(ctx, tierID)
 	if err != nil {
 		return "", "", err
 	}
@@ -316,7 +333,7 @@ func (c *Client) ResolveProjectID() (string, string, error) {
 }
 
 // FetchAvailableModels retrieves available models with quota information
-func (c *Client) FetchAvailableModels() (*models.FetchAvailableModelsResponse, error) {
+func (c *Client) FetchAvailableModels(ctx context.Context) (*models.FetchAvailableModelsResponse, error) {
 	if err := c.EnsureAuthenticated(); err != nil {
 		return nil, err
 	}
@@ -331,7 +348,7 @@ func (c *Client) FetchAvailableModels() (*models.FetchAvailableModelsResponse, e
 		request.Project = c.projectID
 	}
 
-	responseData, err := c.doRequest("POST", "/v1internal:fetchAvailableModels", request)
+	responseData, err := c.doRequest(ctx, "POST", "/v1internal:fetchAvailableModels", request)
 	if err != nil {
 		return nil, fmt.Errorf("fetchAvailableModels failed: %w", err)
 	}
@@ -345,17 +362,19 @@ func (c *Client) FetchAvailableModels() (*models.FetchAvailableModelsResponse, e
 }
 
 // GetQuotaInfo retrieves complete quota information for all models
-func (c *Client) GetQuotaInfo() (*models.QuotaSummary, error) {
+func (c *Client) GetQuotaInfo(ctx context.Context) (*models.QuotaSummary, error) {
 	// First, resolve project ID (this handles onboarding if needed)
-	_, tierID, err := c.ResolveProjectID()
+	_, tierID, err := c.ResolveProjectID(ctx)
 	if err != nil {
-		fmt.Printf("DEBUG: ResolveProjectID failed: %v\n", err)
+		if ctx.Err() == nil {
+			fmt.Printf("DEBUG: ResolveProjectID failed: %v\n", err)
+		}
 		// Not a fatal error, continue without project ID
 	}
 	tierName := models.MapTierToName(tierID)
 
 	// Fetch available models
-	modelsResp, err := c.FetchAvailableModels()
+	modelsResp, err := c.FetchAvailableModels(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +410,7 @@ func (c *Client) GetQuotaInfo() (*models.QuotaSummary, error) {
 }
 
 // GetQuotaInfoForAccount retrieves quota information for a specific account
-func (c *Client) GetQuotaInfoForAccount(email string) (*models.QuotaSummary, error) {
+func (c *Client) GetQuotaInfoForAccount(ctx context.Context, email string) (*models.QuotaSummary, error) {
 	// Load token for the specific account
 	token, err := auth.LoadTokenForAccount(email)
 	if err != nil {
@@ -413,9 +432,11 @@ func (c *Client) GetQuotaInfoForAccount(email string) (*models.QuotaSummary, err
 	c.SetToken(accessToken)
 
 	// First, resolve project ID (this handles onboarding if needed)
-	projectID, tierID, err := c.ResolveProjectID()
+	projectID, tierID, err := c.ResolveProjectID(ctx)
 	if err != nil {
-		fmt.Printf("DEBUG: ResolveProjectID failed for %s: %v\n", email, err)
+		if ctx.Err() == nil {
+			fmt.Printf("DEBUG: ResolveProjectID failed for %s: %v\n", email, err)
+		}
 		// Not a fatal error, continue without project ID
 	} else if projectID != "" {
 		c.SetProjectID(projectID)
@@ -431,7 +452,7 @@ func (c *Client) GetQuotaInfoForAccount(email string) (*models.QuotaSummary, err
 	}
 
 	// Fetch available models
-	modelsResp, err := c.FetchAvailableModels()
+	modelsResp, err := c.FetchAvailableModels(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch models for %s: %w", email, err)
 	}
