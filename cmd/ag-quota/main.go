@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"github.com/gundamkid/anti-gravity-quota/internal/config"
 	"github.com/gundamkid/anti-gravity-quota/internal/ui"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -46,7 +48,9 @@ var quotaCmd = &cobra.Command{
 	Short: "Check quota for all models",
 	Long:  `Display quota information for all available AI models (Claude and Gemini).`,
 	Run: func(cmd *cobra.Command, args []string) {
-		runQuota(cmd, args)
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		runQuota(ctx, cmd, args)
 	},
 }
 
@@ -81,7 +85,7 @@ var logoutCmd = &cobra.Command{
 }
 
 // runQuota handles the quota command
-func runQuota(cmd *cobra.Command, args []string) {
+func runQuota(ctx context.Context, cmd *cobra.Command, args []string) {
 	// Handle watch mode
 	if cmd.Flags().Changed("watch") {
 		if jsonOutput {
@@ -109,7 +113,7 @@ func runQuota(cmd *cobra.Command, args []string) {
 
 		// Initial fetch
 		ui.DisplayWatchHeader(watchInterval)
-		fetchAndDisplayQuota()
+		fetchAndDisplayQuota(ctx)
 		ui.DisplayWatchFooter(time.Now())
 
 		for {
@@ -119,26 +123,26 @@ func runQuota(cmd *cobra.Command, args []string) {
 				return
 			case <-ticker.C:
 				ui.DisplayWatchHeader(watchInterval)
-				fetchAndDisplayQuota()
+				fetchAndDisplayQuota(ctx)
 				ui.DisplayWatchFooter(time.Now())
 			}
 		}
 	}
 
-	fetchAndDisplayQuota()
+	fetchAndDisplayQuota(ctx)
 }
 
 // fetchAndDisplayQuota is the core logic of runQuota separated for watch mode
-func fetchAndDisplayQuota() {
+func fetchAndDisplayQuota(ctx context.Context) {
 	// Handle --all flag
 	if allFlag {
-		runQuotaForAllAccounts()
+		runQuotaForAllAccounts(ctx)
 		return
 	}
 
 	// Handle --account flag
 	if accountFlag != "" {
-		runQuotaForAccount(accountFlag)
+		runQuotaForAccount(ctx, accountFlag)
 		return
 	}
 
@@ -163,7 +167,7 @@ func fetchAndDisplayQuota() {
 	client := api.NewClient()
 
 	// Get quota info
-	quotaInfo, err := client.GetQuotaInfo()
+	quotaInfo, err := client.GetQuotaInfo(ctx)
 	if err != nil {
 		if jsonOutput {
 			fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "message": "%s"}%s`, err.Error(), "\n")
@@ -195,14 +199,14 @@ func fetchAndDisplayQuota() {
 }
 
 // runQuotaForAccount fetches and displays quota for a specific account
-func runQuotaForAccount(email string) {
+func runQuotaForAccount(ctx context.Context, email string) {
 	if !jsonOutput {
 		fmt.Println()
 		fmt.Printf("Fetching quota for %s... ", email)
 	}
 
 	client := api.NewClient()
-	quotaInfo, err := client.GetQuotaInfoForAccount(email)
+	quotaInfo, err := client.GetQuotaInfoForAccount(ctx, email)
 	if err != nil {
 		if jsonOutput {
 			fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "account": "%s", "message": "%s"}%s`, email, err.Error(), "\n")
@@ -228,7 +232,7 @@ func runQuotaForAccount(email string) {
 }
 
 // runQuotaForAllAccounts fetches and displays quota for all saved accounts
-func runQuotaForAllAccounts() {
+func runQuotaForAllAccounts(ctx context.Context) {
 	mgr, err := auth.NewAccountManager()
 	if err != nil {
 		if jsonOutput {
@@ -264,49 +268,56 @@ func runQuotaForAllAccounts() {
 		fmt.Println()
 	}
 
-	// Fetch quota for each account in parallel
-	resultsChan := make(chan *ui.AccountQuotaResult, len(accounts))
-	var wg sync.WaitGroup
+	// Fetch quota for each account in parallel using errgroup
+	quotaResults := make([]*ui.AccountQuotaResult, len(accounts))
+	g, gCtx := errgroup.WithContext(ctx)
+	var mu sync.Mutex
 
-	for _, acc := range accounts {
-		wg.Add(1)
-		go func(email string) {
-			defer wg.Done()
-
+	for i, acc := range accounts {
+		i, email := i, acc.Email
+		g.Go(func() error {
 			// Create a new client per goroutine to avoid race conditions
-			// as the client holds account-specific state (tokens).
 			client := api.NewClient()
-			quotaInfo, err := client.GetQuotaInfoForAccount(email)
+			quotaInfo, err := client.GetQuotaInfoForAccount(gCtx, email)
 			if err != nil {
-				resultsChan <- &ui.AccountQuotaResult{
-					Email: email,
-					Error: err.Error(),
-				}
-				return
+				return fmt.Errorf("failed to fetch quota for %s: %w", email, err)
 			}
 
-			resultsChan <- &ui.AccountQuotaResult{
+			mu.Lock()
+			quotaResults[i] = &ui.AccountQuotaResult{
 				Email:        email,
 				QuotaSummary: quotaInfo,
 			}
-		}(acc.Email)
+			mu.Unlock()
+			return nil
+		})
 	}
 
-	// Close channel when all goroutines are done
-	go func() {
-		wg.Wait()
-		close(resultsChan)
-	}()
-
-	// Collect results
-	var quotaResults []*ui.AccountQuotaResult
-	for result := range resultsChan {
-		quotaResults = append(quotaResults, result)
+	// Wait for all to complete or first error
+	if err := g.Wait(); err != nil {
+		if jsonOutput {
+			fmt.Fprintf(os.Stderr, `{"error": "concurrency error", "message": "%s"}%s`, err.Error(), "\n")
+		} else {
+			fmt.Println()
+			ui.DisplayError("failed to fetch all quotas", err)
+		}
+		os.Exit(1)
 	}
 
-	// Sort results by email to keep consistent output
-	sort.Slice(quotaResults, func(i, j int) bool {
-		return quotaResults[i].Email < quotaResults[j].Email
+	// Sort results by email for consistent output
+	// (Actually they might already be mostly sorted by the loop index if we didn't use i,
+	// but let's be safe and keep the sort if needed, though they are stored in quotaResults[i])
+
+	// Filter out nil results (though with g.Wait they should all be filled if no error)
+	var finalResults []*ui.AccountQuotaResult
+	for _, r := range quotaResults {
+		if r != nil {
+			finalResults = append(finalResults, r)
+		}
+	}
+
+	sort.Slice(finalResults, func(i, j int) bool {
+		return finalResults[i].Email < finalResults[j].Email
 	})
 
 	if !jsonOutput {
@@ -315,12 +326,12 @@ func runQuotaForAllAccounts() {
 
 	// Display results
 	if jsonOutput {
-		if err := ui.DisplayAllAccountsQuotaJSON(quotaResults); err != nil {
+		if err := ui.DisplayAllAccountsQuotaJSON(finalResults); err != nil {
 			fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
 			os.Exit(1)
 		}
 	} else {
-		ui.DisplayAllAccountsQuota(quotaResults)
+		ui.DisplayAllAccountsQuota(finalResults)
 	}
 }
 
