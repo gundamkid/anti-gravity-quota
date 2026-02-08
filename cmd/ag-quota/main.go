@@ -279,27 +279,45 @@ func runQuotaForAllAccounts(ctx context.Context) {
 			// Create a new client per goroutine to avoid race conditions
 			client := api.NewClient()
 			quotaInfo, err := client.GetQuotaInfoForAccount(gCtx, email)
-			if err != nil {
-				return fmt.Errorf("failed to fetch quota for %s: %w", email, err)
-			}
 
 			mu.Lock()
+			defer mu.Unlock()
+
+			if err != nil {
+				// Record individual account error instead of returning it to errgroup
+				// This prevents one bad account from stopping the entire --all fetch.
+				quotaResults[idx] = &ui.AccountQuotaResult{
+					Email: email,
+					Error: err.Error(),
+				}
+				return nil
+			}
+
 			quotaResults[idx] = &ui.AccountQuotaResult{
 				Email:        email,
 				QuotaSummary: quotaInfo,
 			}
-			mu.Unlock()
 			return nil
 		})
 	}
 
-	// Wait for all to complete or first error
+	// Wait for completion. Fatal errors (cancellation) will still cause Wait to return error
 	if err := g.Wait(); err != nil {
+		// Only exit if the error is a context cancellation (e.g. Ctrl+C)
+		if ctx.Err() != nil {
+			if jsonOutput {
+				fmt.Fprintf(os.Stderr, `{"error": "cancelled"}%s`, "\n")
+			} else {
+				fmt.Println("\nOperation cancelled.")
+			}
+			os.Exit(1)
+		}
+
+		// For other fatal errors that might still propagate
 		if jsonOutput {
-			fmt.Fprintf(os.Stderr, `{"error": "concurrency error", "message": "%s"}%s`, err.Error(), "\n")
+			fmt.Fprintf(os.Stderr, `{"error": "fatal error", "message": "%s"}%s`, err.Error(), "\n")
 		} else {
-			fmt.Println()
-			ui.DisplayError("failed to fetch all quotas", err)
+			ui.DisplayError("fatal error during fetch", err)
 		}
 		os.Exit(1)
 	}
