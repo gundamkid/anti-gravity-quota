@@ -69,10 +69,19 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 	var lastErr error
 
 	for attempt := 0; attempt <= MaxRetries; attempt++ {
+		// Check context before each attempt
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
 		if attempt > 0 {
-			// Exponential backoff
+			// Exponential backoff with context awareness
 			delay := RetryDelay * time.Duration(1<<uint(attempt-1))
-			time.Sleep(delay)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
 		}
 
 		// Marshal request body
@@ -102,6 +111,10 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 		// Perform request
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
+			// If context was cancelled, return immediately
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			lastErr = fmt.Errorf("request failed: %w", err)
 			continue
 		}
@@ -110,6 +123,9 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 		defer resp.Body.Close()
 		responseBody, err := io.ReadAll(resp.Body)
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			lastErr = fmt.Errorf("failed to read response: %w", err)
 			continue
 		}
@@ -350,7 +366,9 @@ func (c *Client) GetQuotaInfo(ctx context.Context) (*models.QuotaSummary, error)
 	// First, resolve project ID (this handles onboarding if needed)
 	_, tierID, err := c.ResolveProjectID(ctx)
 	if err != nil {
-		fmt.Printf("DEBUG: ResolveProjectID failed: %v\n", err)
+		if ctx.Err() == nil {
+			fmt.Printf("DEBUG: ResolveProjectID failed: %v\n", err)
+		}
 		// Not a fatal error, continue without project ID
 	}
 	tierName := models.MapTierToName(tierID)
@@ -416,7 +434,9 @@ func (c *Client) GetQuotaInfoForAccount(ctx context.Context, email string) (*mod
 	// First, resolve project ID (this handles onboarding if needed)
 	projectID, tierID, err := c.ResolveProjectID(ctx)
 	if err != nil {
-		fmt.Printf("DEBUG: ResolveProjectID failed for %s: %v\n", email, err)
+		if ctx.Err() == nil {
+			fmt.Printf("DEBUG: ResolveProjectID failed for %s: %v\n", email, err)
+		}
 		// Not a fatal error, continue without project ID
 	} else if projectID != "" {
 		c.SetProjectID(projectID)
