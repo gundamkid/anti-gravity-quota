@@ -2,8 +2,10 @@ package auth
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net"
 	"net/http"
 	"os/exec"
@@ -13,6 +15,9 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
+
+//go:embed ui/callback.html
+var callbackHTML string
 
 const (
 	// Google OAuth2 endpoints
@@ -193,57 +198,38 @@ func handleCallback(w http.ResponseWriter, r *http.Request, config *oauth2.Confi
 	tokenData := FromOAuth2Token(token, email)
 
 	// Save token
-	if err := SaveToken(tokenData); err != nil {
+	err = SaveToken(tokenData)
+	if err != nil {
 		http.Error(w, "Failed to save token", http.StatusInternalServerError)
 		resultChan <- LoginResult{Error: fmt.Errorf("failed to save token: %w", err)}
 		return
 	}
 
 	// Set the logged-in account as default
-	if mgr, err := NewAccountManager(); err == nil {
+	if mgr, mErr := NewAccountManager(); mErr == nil {
 		_ = mgr.SetDefaultAccount(email)
 	}
 
 	// Send success response
 	w.Header().Set("Content-Type", "text/html")
-	_, _ = fmt.Fprintf(w, `
-		<!DOCTYPE html>
-		<html>
-		<head>
-			<title>Authentication Successful</title>
-			<style>
-				body {
-					font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-					display: flex;
-					justify-content: center;
-					align-items: center;
-					height: 100vh;
-					margin: 0;
-					background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-				}
-				.container {
-					background: white;
-					padding: 3rem;
-					border-radius: 10px;
-					box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-					text-align: center;
-					max-width: 500px;
-				}
-				h1 { color: #333; margin-top: 0; }
-				p { color: #666; font-size: 1.1rem; }
-				.success { color: #22c55e; font-size: 3rem; }
-			</style>
-		</head>
-		<body>
-			<div class="container">
-				<div class="success">✓</div>
-				<h1>Authentication Successful!</h1>
-				<p>You have been successfully authenticated.</p>
-				<p>You can close this window and return to the terminal.</p>
-			</div>
-		</body>
-		</html>
-	`)
+	var tmpl *template.Template
+	tmpl, err = template.New("callback").Parse(callbackHTML)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		resultChan <- LoginResult{Error: fmt.Errorf("failed to parse callback template: %w", err)}
+		return
+	}
+
+	data := struct {
+		Email string
+	}{
+		Email: email,
+	}
+
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		fmt.Printf("DEBUG: Failed to execute template: %v\n", err)
+	}
 
 	// Send result
 	resultChan <- LoginResult{
