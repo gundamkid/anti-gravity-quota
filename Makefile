@@ -53,7 +53,7 @@ fmt:
 # Lint code
 lint:
 	@echo "Linting code..."
-	@golangci-lint run || true
+	@$(shell go env GOPATH)/bin/golangci-lint run
 	@echo "✓ Lint complete"
 
 # Show help
