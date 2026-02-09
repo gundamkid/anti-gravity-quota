@@ -20,7 +20,7 @@ A lightweight CLI tool to monitor your Anti-Gravity (Claude Code) AI model quota
 go build -o ag-quota ./cmd/ag-quota
 
 # Or install directly
-go install github.com/gundamkid/anti-gravity-quota/cmd/ag-quota@latest
+go install github.com/gundamkid/anti-gravity-quota/cmd/ag-quota@v0.1.4
 ```
 
 ## Quick Start
