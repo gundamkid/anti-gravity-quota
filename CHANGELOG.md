@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2026-02-09
+
+### 🚀 Features
+- **Watch Mode**: Real-time quota monitoring with `ag-quota --watch`.
+  - Supports custom refresh intervals (e.g., `--watch=10`).
+  - Clears screen and updates display automatically.
+  - Handles `Ctrl+C` gracefully.
+- **Improved UX**: Redesigned OAuth callback page with "NieR:Automata" theme ("Glory to Mankind") for a premium authentication experience.
+
+### 🛠 Improvements
+- **Concurrency**: Refactored `quota --all` to use `errgroup` for better error propagation and context cancellation.
+- **Testing**: Improved test stability by mocking time in `TestFormatResetTime`, eliminating flaky tests.
+- **CI/CD**: Optimized GitHub Actions pipeline by combining Lint and Test jobs into a single `quality-check` job, reducing execution time.
+
+### 📝 Documentation
+- **Retrospective**: Added comprehensive Sprint 2 retrospective covering process, engineering, and action items.
+
 ## [0.1.3] - 2026-01-30
 
 ### 🚀 Features

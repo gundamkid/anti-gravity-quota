@@ -2,7 +2,7 @@
 
 # Build variables
 APP_NAME := ag-quota
-VERSION := 0.1.3
+VERSION := 0.1.4
 BUILD_DIR := dist
 INSTALL_DIR := /usr/local/bin
 
