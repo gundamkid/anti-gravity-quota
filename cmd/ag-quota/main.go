@@ -14,17 +14,25 @@ import (
 	"github.com/gundamkid/anti-gravity-quota/internal/api"
 	"github.com/gundamkid/anti-gravity-quota/internal/auth"
 	"github.com/gundamkid/anti-gravity-quota/internal/config"
+	"github.com/gundamkid/anti-gravity-quota/internal/notify"
 	"github.com/gundamkid/anti-gravity-quota/internal/ui"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
 
 var (
-	version       = "0.1.1"
+	version       = "0.1.5"
 	jsonOutput    bool
 	accountFlag   string
 	allFlag       bool
 	watchInterval int
+	compactFlag   bool
+	noCompactFlag bool
+
+	// Notifications
+	notifRegistry *notify.Registry
+	stateTracker  *notify.StateTracker
+	msgFormatter  *notify.MessageFormatter
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -113,7 +121,7 @@ func runQuota(ctx context.Context, cmd *cobra.Command, args []string) {
 
 		// Initial fetch
 		ui.DisplayWatchHeader(watchInterval)
-		fetchAndDisplayQuota(ctx)
+		fetchAndDisplayQuota(ctx, true)
 		ui.DisplayWatchFooter(time.Now())
 
 		for {
@@ -123,127 +131,134 @@ func runQuota(ctx context.Context, cmd *cobra.Command, args []string) {
 				return
 			case <-ticker.C:
 				ui.DisplayWatchHeader(watchInterval)
-				fetchAndDisplayQuota(ctx)
+				fetchAndDisplayQuota(ctx, true)
 				ui.DisplayWatchFooter(time.Now())
 			}
 		}
 	}
 
-	fetchAndDisplayQuota(ctx)
+	fetchAndDisplayQuota(ctx, false)
 }
 
 // fetchAndDisplayQuota is the core logic of runQuota separated for watch mode
-func fetchAndDisplayQuota(ctx context.Context) {
+func fetchAndDisplayQuota(ctx context.Context, triggerNotify bool) {
+	var finalResults []*ui.AccountQuotaResult
+
 	// Handle --all flag
 	if allFlag {
-		runQuotaForAllAccounts(ctx)
+		finalResults = runQuotaForAllAccounts(ctx)
+	} else {
+		// Handle --account flag or default
+		email := accountFlag
+		if email == "" {
+			token, err := auth.LoadToken()
+			if err != nil {
+				if jsonOutput {
+					fmt.Fprintf(os.Stderr, `{"error": "not logged in"}%s`, "\n")
+				} else {
+					ui.DisplayNotLoggedIn()
+				}
+				os.Exit(1)
+			}
+			email = token.Email
+		}
+
+		res, err := fetchQuotaForAccountResult(ctx, email)
+		if err != nil {
+			if ctx.Err() == nil {
+				if jsonOutput {
+					fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "message": "%s"}%s`, err.Error(), "\n")
+				} else {
+					ui.DisplayError("Failed to fetch quota information", err)
+				}
+				os.Exit(1)
+			}
+			return
+		}
+		finalResults = []*ui.AccountQuotaResult{res}
+	}
+
+	if finalResults == nil {
 		return
 	}
 
-	// Handle --account flag
-	if accountFlag != "" {
-		runQuotaForAccount(ctx, accountFlag)
-		return
+	// Determine if compact mode should be used
+	displayOpts := ui.DisplayOptions{
+		Compact: false,
 	}
 
-	// Default: check quota for default account
-	_, err := auth.LoadToken()
-	if err != nil {
-		if jsonOutput {
-			fmt.Fprintf(os.Stderr, `{"error": "not logged in"}%s`, "\n")
-		} else {
-			ui.DisplayNotLoggedIn()
+	if compactFlag {
+		displayOpts.Compact = true
+	} else if !noCompactFlag {
+		// Auto-detect based on terminal width
+		width := ui.GetTerminalWidth()
+		if width < 80 {
+			displayOpts.Compact = true
 		}
-		os.Exit(1)
 	}
 
-	// Show loading message (only if not JSON output)
-	if !jsonOutput {
-		fmt.Println()
-		fmt.Print("Fetching quota information... ")
-	}
-
-	// Create API client
-	client := api.NewClient()
-
-	// Get quota info
-	quotaInfo, err := client.GetQuotaInfo(ctx)
-	if err != nil {
-		// Suppress error messages if context was cancelled by user
-		if ctx.Err() != nil {
-			fmt.Println()
-			os.Exit(0)
-		}
-
-		if jsonOutput {
-			fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "message": "%s"}%s`, err.Error(), "\n")
-		} else {
-			fmt.Println()
-			ui.DisplayError("Failed to fetch quota information", err)
-			fmt.Println()
-			fmt.Println("Possible issues:")
-			fmt.Println("  • Token may have expired (run 'ag-quota login' to re-authenticate)")
-			fmt.Println("  • Network connection issues")
-			fmt.Println("  • API service may be temporarily unavailable")
-		}
-		os.Exit(1)
-	}
-
-	if !jsonOutput {
-		fmt.Println(color.GreenString("✓"))
-	}
-
-	// Display quota information
+	// Display results
 	if jsonOutput {
-		if err := ui.DisplayQuotaSummaryJSON(quotaInfo); err != nil {
-			fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
-			os.Exit(1)
+		if allFlag {
+			if err := ui.DisplayAllAccountsQuotaJSON(finalResults); err != nil {
+				fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
+				os.Exit(1)
+			}
+		} else if len(finalResults) > 0 {
+			if err := ui.DisplayQuotaSummaryJSON(finalResults[0].QuotaSummary); err != nil {
+				fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	} else {
-		ui.DisplayQuotaSummary(quotaInfo)
+		if allFlag {
+			ui.DisplayAllAccountsQuota(finalResults, displayOpts)
+		} else if len(finalResults) > 0 {
+			ui.DisplayQuotaSummary(finalResults[0].QuotaSummary, displayOpts)
+		}
+	}
+
+	// Handle notifications if enabled and requested
+	if triggerNotify && notifRegistry != nil {
+		var allChanges []notify.StatusChange
+		for _, res := range finalResults {
+			if res.QuotaSummary != nil {
+				changes := stateTracker.Update(res.Email, res.QuotaSummary.Models)
+				allChanges = append(allChanges, changes...)
+			}
+		}
+
+		if len(allChanges) > 0 {
+			msg := msgFormatter.FormatChanges(allChanges)
+			notifRegistry.NotifyAll(ctx, msg)
+		}
 	}
 }
 
-// runQuotaForAccount fetches and displays quota for a specific account
-func runQuotaForAccount(ctx context.Context, email string) {
-	if !jsonOutput {
-		fmt.Println()
+// fetchQuotaForAccountResult is a helper to fetch quota and return as result struct
+func fetchQuotaForAccountResult(ctx context.Context, email string) (*ui.AccountQuotaResult, error) {
+	if !jsonOutput && !allFlag {
 		fmt.Printf("Fetching quota for %s... ", email)
 	}
 
 	client := api.NewClient()
 	quotaInfo, err := client.GetQuotaInfoForAccount(ctx, email)
 	if err != nil {
-		if ctx.Err() != nil {
-			fmt.Println()
-			os.Exit(0)
-		}
-
-		if jsonOutput {
-			fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "account": "%s", "message": "%s"}%s`, email, err.Error(), "\n")
-		} else {
-			fmt.Println()
-			ui.DisplayError(fmt.Sprintf("Failed to fetch quota for %s", email), err)
-		}
-		os.Exit(1)
+		return nil, err
 	}
 
-	if !jsonOutput {
+	if !jsonOutput && !allFlag {
 		fmt.Println(color.GreenString("✓"))
 	}
 
-	if jsonOutput {
-		if err := ui.DisplayQuotaSummaryJSON(quotaInfo); err != nil {
-			fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
-		ui.DisplayQuotaSummary(quotaInfo)
-	}
+	return &ui.AccountQuotaResult{
+		Email:        email,
+		QuotaSummary: quotaInfo,
+	}, nil
 }
 
-// runQuotaForAllAccounts fetches and displays quota for all saved accounts
-func runQuotaForAllAccounts(ctx context.Context) {
+// runQuotaForAllAccounts fetches and returns quota for all saved accounts
+func runQuotaForAllAccounts(ctx context.Context) []*ui.AccountQuotaResult {
 	mgr, err := auth.NewAccountManager()
 	if err != nil {
 		if jsonOutput {
@@ -273,7 +288,7 @@ func runQuotaForAllAccounts(ctx context.Context) {
 		os.Exit(1)
 	}
 
-	if !jsonOutput {
+	if !jsonOutput && !allFlag { // Redundant but for clarity
 		fmt.Println()
 		fmt.Printf("Fetching quota for %d account(s)...\n", len(accounts))
 		fmt.Println()
@@ -315,12 +330,10 @@ func runQuotaForAllAccounts(ctx context.Context) {
 	// Wait for completion. Fatal errors (cancellation) will still cause Wait to return error
 	err = g.Wait()
 	if ctx.Err() != nil {
-		fmt.Println()
-		os.Exit(0)
+		return nil
 	}
 
 	if err != nil {
-
 		// For other fatal errors that might still propagate
 		if jsonOutput {
 			fmt.Fprintf(os.Stderr, `{"error": "fatal error", "message": "%s"}%s`, err.Error(), "\n")
@@ -329,10 +342,6 @@ func runQuotaForAllAccounts(ctx context.Context) {
 		}
 		os.Exit(1)
 	}
-
-	// Sort results by email for consistent output
-	// (Actually they might already be mostly sorted by the loop index if we didn't use i,
-	// but let's be safe and keep the sort if needed, though they are stored in quotaResults[i])
 
 	// Filter out nil results (though with g.Wait they should all be filled if no error)
 	var finalResults []*ui.AccountQuotaResult
@@ -346,19 +355,7 @@ func runQuotaForAllAccounts(ctx context.Context) {
 		return finalResults[i].Email < finalResults[j].Email
 	})
 
-	if !jsonOutput {
-		fmt.Println()
-	}
-
-	// Display results
-	if jsonOutput {
-		if err := ui.DisplayAllAccountsQuotaJSON(finalResults); err != nil {
-			fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
-		ui.DisplayAllAccountsQuota(finalResults)
-	}
+	return finalResults
 }
 
 // runLogin handles the login command
@@ -440,16 +437,22 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(logoutCmd)
+	rootCmd.AddCommand(configCmd)
 
 	// Add flags to root asPersistentFlags so they are available to subcommands and when running root directly
 	rootCmd.PersistentFlags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
 	rootCmd.PersistentFlags().StringVar(&accountFlag, "account", "", "Check quota for specific account")
 	rootCmd.PersistentFlags().BoolVar(&allFlag, "all", false, "Check quota for all accounts")
 	rootCmd.PersistentFlags().IntVarP(&watchInterval, "watch", "w", 0, "Watch quota periodically (default 5m)")
+	rootCmd.PersistentFlags().BoolVar(&compactFlag, "compact", false, "Force compact mode display")
+	rootCmd.PersistentFlags().BoolVar(&noCompactFlag, "no-compact", false, "Force full mode display (disable auto-compact)")
 	rootCmd.PersistentFlags().Lookup("watch").NoOptDefVal = "5"
 }
 
 func main() {
+	// Initialize notifications
+	initNotifications()
+
 	// Perform migration if needed (from single-account to multi-account format)
 	if err := auth.MigrateIfNeeded(); err != nil {
 		fmt.Fprintf(os.Stderr, "Migration warning: %v\n", err)
@@ -458,5 +461,27 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+func initNotifications() {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return
+	}
+
+	if !cfg.Notifications.Enabled {
+		return
+	}
+
+	notifRegistry = notify.NewRegistry()
+	stateTracker = notify.NewStateTracker()
+	msgFormatter = notify.NewMessageFormatter()
+
+	// Register Telegram if configured
+	if cfg.Notifications.Telegram.BotToken != "" && cfg.Notifications.Telegram.ChatID != "" {
+		notifRegistry.Register(notify.NewTelegramNotifier(
+			cfg.Notifications.Telegram.BotToken,
+			cfg.Notifications.Telegram.ChatID,
+		))
 	}
 }

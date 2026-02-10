@@ -1,9 +1,29 @@
 package config
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 )
+
+// Config represents the application's configuration.
+type Config struct {
+	DefaultAccount string               `json:"default_account,omitempty"`
+	Notifications  NotificationSettings `json:"notifications,omitempty"`
+}
+
+// NotificationSettings contains settings for various notification channels.
+type NotificationSettings struct {
+	Enabled  bool             `json:"enabled"`
+	Telegram TelegramSettings `json:"telegram,omitempty"`
+}
+
+// TelegramSettings contains credentials for Telegram bot notifications.
+type TelegramSettings struct {
+	BotToken string `json:"bot_token"`
+	ChatID   string `json:"chat_id"`
+}
 
 // AtomicWrite writes data to a file atomically by writing to a temp file first and then renaming it.
 func AtomicWrite(path string, data []byte, perm os.FileMode) error {
@@ -130,4 +150,46 @@ func GetConfigPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(configDir, ConfigFileName), nil
+}
+
+// LoadConfig loads the application configuration from the default path.
+func LoadConfig() (*Config, error) {
+	path, err := GetConfigPath()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &Config{}, nil
+		}
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var cfg Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	return &cfg, nil
+}
+
+// SaveConfig saves the application configuration to the default path.
+func SaveConfig(cfg *Config) error {
+	path, err := GetConfigPath()
+	if err != nil {
+		return err
+	}
+
+	if _, err = EnsureConfigDir(); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	return AtomicWrite(path, data, 0600)
 }

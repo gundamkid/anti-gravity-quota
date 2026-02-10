@@ -56,7 +56,7 @@ func TestMigrateIfNeeded(t *testing.T) {
 
 	// Check config.json
 	configPath := filepath.Join(configDir, "config.json")
-	var cfg AppConfig
+	var cfg config.Config
 	cfgData, err := os.ReadFile(configPath)
 	require.NoError(t, err)
 	err = json.Unmarshal(cfgData, &cfg)

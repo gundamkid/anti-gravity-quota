@@ -71,7 +71,7 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 	for attempt := 0; attempt <= MaxRetries; attempt++ {
 		// Check context before each attempt
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("context error: %w", err)
 		}
 
 		if attempt > 0 {
@@ -79,7 +79,7 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 			delay := RetryDelay * time.Duration(1<<uint(attempt-1))
 			select {
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return nil, fmt.Errorf("context cancelled during retry backoff: %w", ctx.Err())
 			case <-time.After(delay):
 			}
 		}
@@ -113,7 +113,7 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 		if err != nil {
 			// If context was cancelled, return immediately
 			if ctx.Err() != nil {
-				return nil, ctx.Err()
+				return nil, fmt.Errorf("request failed due to context: %w", ctx.Err())
 			}
 			lastErr = fmt.Errorf("request failed: %w", err)
 			continue
@@ -124,7 +124,7 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 		responseBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			if ctx.Err() != nil {
-				return nil, ctx.Err()
+				return nil, fmt.Errorf("failed to read response due to context: %w", ctx.Err())
 			}
 			lastErr = fmt.Errorf("failed to read response: %w", err)
 			continue
@@ -199,7 +199,7 @@ func extractProjectId(value interface{}) string {
 // LoadCodeAssist loads code assist status and retrieves project ID
 func (c *Client) LoadCodeAssist(ctx context.Context) (*models.LoadCodeAssistResponse, error) {
 	if err := c.EnsureAuthenticated(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to ensure authentication for LoadCodeAssist: %w", err)
 	}
 
 	request := models.LoadCodeAssistRequest{
@@ -270,7 +270,7 @@ func (c *Client) ResolveProjectID(ctx context.Context) (string, string, error) {
 	// Step 1: Call loadCodeAssist
 	resp, err := c.LoadCodeAssist(ctx)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to resolve project id: %w", err)
 	}
 
 	// Step 2: Check if we already got it
@@ -321,7 +321,7 @@ func (c *Client) ResolveProjectID(ctx context.Context) (string, string, error) {
 	// Step 4: Onboard
 	projectID, err := c.OnboardUser(ctx, tierID)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("onboarding failed for tier %s: %w", tierID, err)
 	}
 
 	if projectID != "" {
@@ -335,7 +335,7 @@ func (c *Client) ResolveProjectID(ctx context.Context) (string, string, error) {
 // FetchAvailableModels retrieves available models with quota information
 func (c *Client) FetchAvailableModels(ctx context.Context) (*models.FetchAvailableModelsResponse, error) {
 	if err := c.EnsureAuthenticated(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to ensure authentication for FetchAvailableModels: %w", err)
 	}
 
 	// Ensure we have a project ID first (via ResolveProjectID)
@@ -376,7 +376,7 @@ func (c *Client) GetQuotaInfo(ctx context.Context) (*models.QuotaSummary, error)
 	// Fetch available models
 	modelsResp, err := c.FetchAvailableModels(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get models: %w", err)
 	}
 
 	// Convert to QuotaSummary
@@ -417,10 +417,8 @@ func (c *Client) GetQuotaInfoForAccount(ctx context.Context, email string) (*mod
 		return nil, fmt.Errorf("failed to load token for %s: %w", email, err)
 	}
 
-	// Validate token
-	if !token.IsValid() {
-		return nil, fmt.Errorf("token for %s is expired or invalid", email)
-	}
+	// Note: We don't call token.IsValid() here because GetValidTokenForAccount
+	// will handle the refresh logic if the access token is expired.
 
 	// Get valid access token (refresh if needed)
 	accessToken, err := auth.GetValidTokenForAccount(email, auth.GetOAuthConfig())

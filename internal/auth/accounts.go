@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -24,11 +23,6 @@ type AccountInfo struct {
 	IsDefault  bool      `json:"is_default"`
 	LastUsed   time.Time `json:"last_used"`
 	TokenValid bool      `json:"token_valid"`
-}
-
-// AppConfig represents the root application configuration
-type AppConfig struct {
-	DefaultAccount string `json:"default_account,omitempty"`
 }
 
 // AccountManager handles all account-related operations
@@ -106,34 +100,13 @@ func (m *AccountManager) ListAccounts() ([]AccountInfo, error) {
 }
 
 // LoadConfig loads the application config
-func (m *AccountManager) LoadConfig() (*AppConfig, error) {
-	data, err := os.ReadFile(m.configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &AppConfig{}, nil
-		}
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	var cfg AppConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	return &cfg, nil
+func (m *AccountManager) LoadConfig() (*config.Config, error) {
+	return config.LoadConfig()
 }
 
 // SaveConfig saves the application config
-func (m *AccountManager) SaveConfig(cfg *AppConfig) error {
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	// Use atomic write from internal logic if we had one, but for now just WriteFile
-	// Actually, the Skill suggests an atomicWrite helper. I'll add one to internal/config later
-	// or just implement it here for now.
-	return config.AtomicWrite(m.configPath, data, 0600)
+func (m *AccountManager) SaveConfig(cfg *config.Config) error {
+	return config.SaveConfig(cfg)
 }
 
 // SetDefaultAccount sets the default account email

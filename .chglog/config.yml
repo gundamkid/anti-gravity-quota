@@ -1,0 +1,37 @@
+style: github
+template: CHANGELOG.tpl.md
+info:
+  title: CHANGELOG
+  repository_url: https://github.com/gundamkid/anti-gravity-quota
+options:
+  commits:
+    filters:
+      Type:
+        - feat
+        - fix
+        - perf
+        - refactor
+        - docs
+        - style
+        - test
+        - chore
+        - revert
+  commit_groups:
+    title_maps:
+      feat: ✨ Features
+      fix: 🐛 Bug Fixes
+      refactor: 🔧 Improvements
+      perf: ⚡ Performance
+      docs: 📚 Documentation
+      style: 💄 Style
+      test: 🧪 Tests
+      chore: 🔨 Chore
+      revert: ⏪ Reverts
+  header:
+    pattern: "^(\\w*)\\s*:\\s*(.*)$"
+    pattern_maps:
+      - Type
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE

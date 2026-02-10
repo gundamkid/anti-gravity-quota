@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -76,5 +77,32 @@ func TestSaveLoadTokenForAccount(t *testing.T) {
 	}
 	if loaded.Email != email {
 		t.Errorf("expected %s, got %s", email, loaded.Email)
+	}
+}
+
+func TestSaveLoadTokenConcurrent(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.Setenv("XDG_CONFIG_HOME", tmpDir)
+	defer os.Unsetenv("XDG_CONFIG_HOME")
+
+	email := "concurrent@example.com"
+	const iterations = 100
+
+	done := make(chan bool)
+	for i := 0; i < iterations; i++ {
+		go func(id int) {
+			token := &TokenData{
+				AccessToken: fmt.Sprintf("token-%d", id),
+				Email:       email,
+				Expiry:      time.Now().Add(time.Hour),
+			}
+			_ = SaveTokenForAccount(email, token)
+			_, _ = LoadTokenForAccount(email)
+			done <- true
+		}(i)
+	}
+
+	for i := 0; i < iterations; i++ {
+		<-done
 	}
 }
