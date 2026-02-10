@@ -6,13 +6,13 @@ import (
 )
 
 // Severity represents the importance of the notification
-type Severity string
+type Severity int
 
 const (
-	SeverityInfo     Severity = "INFO"
-	SeverityWarning  Severity = "WARNING"
-	SeverityCritical Severity = "CRITICAL"
-	SeverityRecovery Severity = "RECOVERY"
+	SeverityInfo Severity = iota
+	SeverityRecovery
+	SeverityWarning
+	SeverityCritical
 )
 
 // Message represents a notification message
