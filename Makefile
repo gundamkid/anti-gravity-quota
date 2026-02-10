@@ -2,7 +2,7 @@
 
 # Build variables
 APP_NAME := ag-quota
-VERSION := 0.1.4
+VERSION := 0.1.5
 BUILD_DIR := dist
 INSTALL_DIR := /usr/local/bin
 
@@ -59,7 +59,7 @@ lint:
 # Generate changelog
 changelog:
 	@echo "Generating CHANGELOG.md..."
-	@git-chglog -o CHANGELOG.md
+	@$(shell go env GOPATH)/bin/git-chglog -o CHANGELOG.md
 	@echo "✓ CHANGELOG.md generated"
 
 # Show help
