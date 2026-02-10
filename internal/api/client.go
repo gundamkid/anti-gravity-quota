@@ -417,10 +417,8 @@ func (c *Client) GetQuotaInfoForAccount(ctx context.Context, email string) (*mod
 		return nil, fmt.Errorf("failed to load token for %s: %w", email, err)
 	}
 
-	// Validate token
-	if !token.IsValid() {
-		return nil, fmt.Errorf("token for %s is expired or invalid", email)
-	}
+	// Note: We don't call token.IsValid() here because GetValidTokenForAccount
+	// will handle the refresh logic if the access token is expired.
 
 	// Get valid access token (refresh if needed)
 	accessToken, err := auth.GetValidTokenForAccount(email, auth.GetOAuthConfig())

@@ -5,11 +5,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gundamkid/anti-gravity-quota/internal/config"
 	"golang.org/x/oauth2"
 )
+
+var (
+	// locks is a map of mutexes per account to ensure thread safety
+	locks sync.Map
+)
+
+func getLock(email string) *sync.Mutex {
+	lock, _ := locks.LoadOrStore(email, &sync.Mutex{})
+	return lock.(*sync.Mutex)
+}
 
 // TokenData represents stored OAuth2 token information
 type TokenData struct {
@@ -69,6 +80,16 @@ func LoadToken() (*TokenData, error) {
 
 // SaveTokenForAccount saves token data for a specific account
 func SaveTokenForAccount(email string, token *TokenData) error {
+	lock := getLock(email)
+	lock.Lock()
+	defer lock.Unlock()
+
+	return saveTokenForAccount(email, token)
+}
+
+// saveTokenForAccount is the internal version of SaveTokenForAccount that doesn't acquire locks.
+// It must be called while holding the lock for the account.
+func saveTokenForAccount(email string, token *TokenData) error {
 	if _, err := config.EnsureAccountsDir(); err != nil {
 		return err
 	}
@@ -91,6 +112,16 @@ func SaveTokenForAccount(email string, token *TokenData) error {
 
 // LoadTokenForAccount loads token data for a specific account
 func LoadTokenForAccount(email string) (*TokenData, error) {
+	lock := getLock(email)
+	lock.Lock()
+	defer lock.Unlock()
+
+	return loadTokenForAccount(email)
+}
+
+// loadTokenForAccount is the internal version of LoadTokenForAccount that doesn't acquire locks.
+// It must be called while holding the lock for the account.
+func loadTokenForAccount(email string) (*TokenData, error) {
 	tokenPath, err := config.GetAccountPath(email)
 	if err != nil {
 		return nil, err
@@ -199,42 +230,31 @@ func RefreshToken(token *TokenData, oauthConfig *oauth2.Config) (*TokenData, err
 	return refreshedToken, nil
 }
 
-// GetValidToken returns a valid access token, refreshing if necessary
+// GetValidToken returns a valid access token for the default account, refreshing if necessary
 func GetValidToken(oauthConfig *oauth2.Config) (string, error) {
-	// Load existing token
 	token, err := LoadToken()
 	if err != nil {
 		return "", err
 	}
 
-	// Check if token is still valid
-	if token.IsValid() {
-		return token.AccessToken, nil
-	}
-
-	// Token expired, try to refresh
-	if token.RefreshToken == "" {
-		return "", fmt.Errorf("token expired and no refresh token available, please login again")
-	}
-
-	// Refresh the token
-	refreshedToken, err := RefreshToken(token, oauthConfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to refresh token: %w", err)
-	}
-
-	return refreshedToken.AccessToken, nil
+	return GetValidTokenForAccount(token.Email, oauthConfig)
 }
 
 // GetValidTokenForAccount returns a valid access token for a specific account, refreshing if necessary
 func GetValidTokenForAccount(email string, oauthConfig *oauth2.Config) (string, error) {
-	// Load existing token for the account
-	token, err := LoadTokenForAccount(email)
+	// Use a lock for this account to prevent concurrent refreshes
+	lock := getLock(email)
+	lock.Lock()
+	defer lock.Unlock()
+
+	// Load existing token for the account again while holding the lock
+	// to ensure we have the latest one (it might have been refreshed by another goroutine)
+	token, err := loadTokenForAccount(email)
 	if err != nil {
 		return "", err
 	}
 
-	// Check if token is still valid
+	// Check if token is still valid (another goroutine might have refreshed it)
 	if token.IsValid() {
 		return token.AccessToken, nil
 	}
@@ -257,7 +277,7 @@ func GetValidTokenForAccount(email string, oauthConfig *oauth2.Config) (string, 
 	refreshedToken := FromOAuth2Token(newToken, email)
 
 	// Save the refreshed token for this account
-	if err := SaveTokenForAccount(email, refreshedToken); err != nil {
+	if err := saveTokenForAccount(email, refreshedToken); err != nil {
 		return "", fmt.Errorf("failed to save refreshed token for %s: %w", email, err)
 	}
 
