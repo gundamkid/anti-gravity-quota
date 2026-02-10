@@ -26,6 +26,8 @@ var (
 	accountFlag   string
 	allFlag       bool
 	watchInterval int
+	compactFlag   bool
+	noCompactFlag bool
 
 	// Notifications
 	notifRegistry *notify.Registry
@@ -180,6 +182,21 @@ func fetchAndDisplayQuota(ctx context.Context, triggerNotify bool) {
 		return
 	}
 
+	// Determine if compact mode should be used
+	displayOpts := ui.DisplayOptions{
+		Compact: false,
+	}
+
+	if compactFlag {
+		displayOpts.Compact = true
+	} else if !noCompactFlag {
+		// Auto-detect based on terminal width
+		width := ui.GetTerminalWidth()
+		if width < 80 {
+			displayOpts.Compact = true
+		}
+	}
+
 	// Display results
 	if jsonOutput {
 		if allFlag {
@@ -195,9 +212,9 @@ func fetchAndDisplayQuota(ctx context.Context, triggerNotify bool) {
 		}
 	} else {
 		if allFlag {
-			ui.DisplayAllAccountsQuota(finalResults)
+			ui.DisplayAllAccountsQuota(finalResults, displayOpts)
 		} else if len(finalResults) > 0 {
-			ui.DisplayQuotaSummary(finalResults[0].QuotaSummary)
+			ui.DisplayQuotaSummary(finalResults[0].QuotaSummary, displayOpts)
 		}
 	}
 
@@ -427,6 +444,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&accountFlag, "account", "", "Check quota for specific account")
 	rootCmd.PersistentFlags().BoolVar(&allFlag, "all", false, "Check quota for all accounts")
 	rootCmd.PersistentFlags().IntVarP(&watchInterval, "watch", "w", 0, "Watch quota periodically (default 5m)")
+	rootCmd.PersistentFlags().BoolVar(&compactFlag, "compact", false, "Force compact mode display")
+	rootCmd.PersistentFlags().BoolVar(&noCompactFlag, "no-compact", false, "Force full mode display (disable auto-compact)")
 	rootCmd.PersistentFlags().Lookup("watch").NoOptDefVal = "5"
 }
 
