@@ -1,4 +1,4 @@
-.PHONY: build clean test install help release
+.PHONY: build clean test install help release changelog
 
 # Build variables
 APP_NAME := ag-quota
@@ -56,6 +56,12 @@ lint:
 	@$(shell go env GOPATH)/bin/golangci-lint run
 	@echo "✓ Lint complete"
 
+# Generate changelog
+changelog:
+	@echo "Generating CHANGELOG.md..."
+	@git-chglog -o CHANGELOG.md
+	@echo "✓ CHANGELOG.md generated"
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -68,4 +74,5 @@ help:
 	@echo "  run       - Build and run"
 	@echo "  fmt       - Format code"
 	@echo "  lint      - Lint code"
+	@echo "  changelog - Generate CHANGELOG.md from commits"
 	@echo "  help      - Show this help message"
