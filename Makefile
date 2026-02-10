@@ -59,7 +59,7 @@ lint:
 # Generate changelog
 changelog:
 	@echo "Generating CHANGELOG.md..."
-	@git-chglog -o CHANGELOG.md
+	@$(shell go env GOPATH)/bin/git-chglog -o CHANGELOG.md
 	@echo "✓ CHANGELOG.md generated"
 
 # Show help

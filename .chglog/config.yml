@@ -1,13 +1,23 @@
-style:
-  priority: ["feat", "fix", "refactor", "perf", "docs", "style", "test", "chore", "revert"]
-template:
-  path: .chglog/CHANGELOG.tpl.md
-  options:
-    append: true
-    # Group commits by type
-    group_by: type
-    # Group commit types into sections
-    groups:
+style: github
+template: CHANGELOG.tpl.md
+info:
+  title: CHANGELOG
+  repository_url: https://github.com/gundamkid/anti-gravity-quota
+options:
+  commits:
+    filters:
+      Type:
+        - feat
+        - fix
+        - perf
+        - refactor
+        - docs
+        - style
+        - test
+        - chore
+        - revert
+  commit_groups:
+    title_maps:
       feat: ✨ Features
       fix: 🐛 Bug Fixes
       refactor: 🔧 Improvements
@@ -17,15 +27,11 @@ template:
       test: 🧪 Tests
       chore: 🔨 Chore
       revert: ⏪ Reverts
-    # Sort commits by date
-    sort_by: date
-    # Commit message format
-    commit_groups_sort_by: title
-    # Issue/PR link templates
-    issue_prefix: ["#", "AGQ-"]
-    commit_url_format: "https://github.com/gundamkid/anti-gravity-quota/commit/{{ .Hash.Long }}"
-    issue_url_format: "https://github.com/gundamkid/anti-gravity-quota/pull/{{ .Issue }}"
-    # JIRA link fallback
-    external_links:
-      - pattern: "AGQ-(\\d+)"
-        url: "https://gundamkid.atlassian.net/browse/AGQ-$1"
+  header:
+    pattern: "^(\\w*)\\s*:\\s*(.*)$"
+    pattern_maps:
+      - Type
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE
