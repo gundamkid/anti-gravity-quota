@@ -40,11 +40,6 @@ func (f *MessageFormatter) FormatChanges(changes []StatusChange) Message {
 	}
 
 	// Group by Account -> Status
-	type Grouped struct {
-		Account  string
-		ByStatus map[string][]StatusChange
-	}
-
 	var accounts []string
 	accountGroups := make(map[string]map[string][]StatusChange)
 
