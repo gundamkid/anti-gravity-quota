@@ -1,0 +1,40 @@
+=== RUN   TestMessageFormatter
+=== RUN   TestMessageFormatter/Single_Change
+=== RUN   TestMessageFormatter/Multiple_Changes_-_Batching
+--- PASS: TestMessageFormatter (0.00s)
+    --- PASS: TestMessageFormatter/Single_Change (0.00s)
+    --- PASS: TestMessageFormatter/Multiple_Changes_-_Batching (0.00s)
+=== RUN   TestRegistry
+=== RUN   TestRegistry/List
+=== RUN   TestRegistry/Get
+=== RUN   TestRegistry/NotifyAll
+--- PASS: TestRegistry (0.00s)
+    --- PASS: TestRegistry/List (0.00s)
+    --- PASS: TestRegistry/Get (0.00s)
+    --- PASS: TestRegistry/NotifyAll (0.00s)
+=== RUN   TestStateTracker
+=== RUN   TestStateTracker/First_Fetch_-_Baseline
+=== RUN   TestStateTracker/Second_Fetch_-_No_Change
+=== RUN   TestStateTracker/Third_Fetch_-_Status_Changed
+=== RUN   TestStateTracker/Reset
+--- PASS: TestStateTracker (0.00s)
+    --- PASS: TestStateTracker/First_Fetch_-_Baseline (0.00s)
+    --- PASS: TestStateTracker/Second_Fetch_-_No_Change (0.00s)
+    --- PASS: TestStateTracker/Third_Fetch_-_Status_Changed (0.00s)
+    --- PASS: TestStateTracker/Reset (0.00s)
+=== RUN   TestTelegramNotifier_Send
+=== RUN   TestTelegramNotifier_Send/Success
+=== RUN   TestTelegramNotifier_Send/API_Error
+=== RUN   TestTelegramNotifier_Send/Rate_Limiting
+--- PASS: TestTelegramNotifier_Send (0.00s)
+    --- PASS: TestTelegramNotifier_Send/Success (0.00s)
+    --- PASS: TestTelegramNotifier_Send/API_Error (0.00s)
+    --- PASS: TestTelegramNotifier_Send/Rate_Limiting (0.00s)
+=== RUN   TestTelegramNotifier_Validate
+=== RUN   TestTelegramNotifier_Validate/Valid_Token
+=== RUN   TestTelegramNotifier_Validate/Invalid_Token
+--- PASS: TestTelegramNotifier_Validate (0.00s)
+    --- PASS: TestTelegramNotifier_Validate/Valid_Token (0.00s)
+    --- PASS: TestTelegramNotifier_Validate/Invalid_Token (0.00s)
+PASS
+ok  	github.com/gundamkid/anti-gravity-quota/internal/notify	(cached)
