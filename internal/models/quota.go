@@ -127,13 +127,16 @@ func (q ModelQuota) GetTimeUntilReset() time.Duration {
 
 // GetStatusString returns a human-readable status string
 func (q ModelQuota) GetStatusString() string {
-	if q.IsExhausted {
+	if q.IsExhausted || q.RemainingFraction <= 0 {
 		return "EMPTY"
 	}
-	if q.RemainingFraction <= 0.1 {
-		return "LOW"
+	if q.RemainingFraction <= 0.2 {
+		return "CRITICAL"
 	}
-	return "OK"
+	if q.RemainingFraction <= 0.5 {
+		return "WARNING"
+	}
+	return "HEALTHY"
 }
 
 // MapTierToName maps a Tier ID to a human-readable name and emoji

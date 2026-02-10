@@ -65,5 +65,5 @@ temp/
 # Debug files
 debug
 __debug_bin
-.agent/
+#.agent/
 

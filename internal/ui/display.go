@@ -78,9 +78,11 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 
 		// Colorize Quota cell
 		var quotaColor text.Colors
-		if percentage <= 10 {
+		if percentage <= 0 {
+			quotaColor = text.Colors{text.FgHiBlack}
+		} else if percentage <= 20 {
 			quotaColor = text.Colors{text.FgRed, text.Bold}
-		} else if percentage <= 30 {
+		} else if percentage <= 50 {
 			quotaColor = text.Colors{text.FgYellow}
 		} else {
 			quotaColor = text.Colors{text.FgGreen}
@@ -91,15 +93,18 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 		statusStr := model.GetStatusString()
 		var statusColor text.Colors
 		switch statusStr {
-		case "OK":
-			statusStr = "✓ OK"
+		case "HEALTHY":
+			statusStr = "✓ HEALTHY"
 			statusColor = text.Colors{text.FgGreen}
-		case "LOW":
-			statusStr = "⚠ LOW"
+		case "WARNING":
+			statusStr = "⚠ WARNING"
 			statusColor = text.Colors{text.FgYellow}
+		case "CRITICAL":
+			statusStr = "⚡ CRITICAL"
+			statusColor = text.Colors{text.FgRed}
 		case "EMPTY":
 			statusStr = "✗ EMPTY"
-			statusColor = text.Colors{text.FgRed}
+			statusColor = text.Colors{text.FgHiBlack}
 		}
 
 		t.AppendRow(table.Row{
@@ -283,9 +288,11 @@ func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
 
 			// Colorize Quota cell
 			var quotaColor text.Colors
-			if percentage <= 10 {
+			if percentage <= 0 {
+				quotaColor = text.Colors{text.FgHiBlack}
+			} else if percentage <= 20 {
 				quotaColor = text.Colors{text.FgRed, text.Bold}
-			} else if percentage <= 30 {
+			} else if percentage <= 50 {
 				quotaColor = text.Colors{text.FgYellow}
 			} else {
 				quotaColor = text.Colors{text.FgGreen}
@@ -296,15 +303,18 @@ func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
 			statusStr := model.GetStatusString()
 			var statusColor text.Colors
 			switch statusStr {
-			case "OK":
-				statusStr = "✓ OK"
+			case "HEALTHY":
+				statusStr = "✓ HEALTHY"
 				statusColor = text.Colors{text.FgGreen}
-			case "LOW":
-				statusStr = "⚠ LOW"
+			case "WARNING":
+				statusStr = "⚠ WARNING"
 				statusColor = text.Colors{text.FgYellow}
+			case "CRITICAL":
+				statusStr = "⚡ CRITICAL"
+				statusColor = text.Colors{text.FgRed}
 			case "EMPTY":
 				statusStr = "✗ EMPTY"
-				statusColor = text.Colors{text.FgRed}
+				statusColor = text.Colors{text.FgHiBlack}
 			}
 
 			t.AppendRow(table.Row{
