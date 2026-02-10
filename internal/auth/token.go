@@ -18,8 +18,9 @@ var (
 )
 
 func getLock(email string) *sync.Mutex {
-	lock, _ := locks.LoadOrStore(email, &sync.Mutex{})
-	return lock.(*sync.Mutex)
+	val, _ := locks.LoadOrStore(email, &sync.Mutex{})
+	lock, _ := val.(*sync.Mutex)
+	return lock
 }
 
 // TokenData represents stored OAuth2 token information
