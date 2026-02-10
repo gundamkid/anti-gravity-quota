@@ -453,6 +453,9 @@ func needsMigration() bool {
 
 This project strictly follows the GitFlow workflow defined in `.agent/workflows/gitflow.md`.
 
+### Commit Message Standards
+All commits MUST follow the project's [Conventional Commits & Jira Integration Rule](../../rules/conventional-commits.md).
+
 **MANDATORY INSTRUCTION:**
 Whenever you are about to perform any git operation (branching, committing, merging, tagging), you **MUST** first use the `view_file` tool to read `.agent/workflows/gitflow.md`. 
 Follow the steps in that file EXACTLY. 
