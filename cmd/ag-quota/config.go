@@ -99,6 +99,36 @@ var getTelegramCmd = &cobra.Command{
 	},
 }
 
+// testNotifyCmd represents the test-notify command
+var testNotifyCmd = &cobra.Command{
+	Use:   "test-notify",
+	Short: "Send a test notification to verified providers",
+	Run: func(cmd *cobra.Command, args []string) {
+		if notifRegistry == nil || len(notifRegistry.List()) == 0 {
+			color.Yellow("No notification providers are registered or enabled.")
+			fmt.Println("Use 'ag-quota config set-telegram' to configure Telegram.")
+			return
+		}
+
+		fmt.Println("Sending test notification...")
+		msg := notify.Message{
+			Title:    "Test Notification 🚀",
+			Body:     "This is a test notification from Anti-Gravity Quota CLI. Your configuration is working correctly!",
+			Severity: notify.SeverityInfo,
+		}
+
+		errs := notifRegistry.NotifyAll(cmd.Context(), msg)
+		if len(errs) > 0 {
+			for _, err := range errs {
+				ui.DisplayError("Failed to send notification", err)
+			}
+			os.Exit(1)
+		}
+
+		color.Green("✓ Test notification sent successfully!")
+	},
+}
+
 func statusString(enabled bool) string {
 	if enabled {
 		return color.GreenString("ENABLED")
@@ -120,6 +150,7 @@ func init() {
 	// Add subcommands to config
 	configCmd.AddCommand(setTelegramCmd)
 	configCmd.AddCommand(getTelegramCmd)
+	configCmd.AddCommand(testNotifyCmd)
 
 	// Add flags to set-telegram
 	setTelegramCmd.Flags().StringVar(&telegramToken, "token", "", "Telegram bot token")
