@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -14,6 +15,9 @@ type TelegramNotifier struct {
 	token  string
 	chatID string
 	client *http.Client
+	mu     sync.Mutex
+	// entries tracks timestamps of messages sent in the last minute for rate limiting
+	entries []time.Time
 }
 
 // NewTelegramNotifier creates a new Telegram notifier
@@ -41,11 +45,31 @@ type TelegramResponse struct {
 	Description string `json:"description"`
 }
 
-// Send sends a message to the configured Telegram chat
+// Send sends a message to the configured Telegram chat with rate limiting
 func (t *TelegramNotifier) Send(ctx context.Context, msg Message) error {
 	if !t.IsEnabled() {
 		return fmt.Errorf("telegram notifier not configured")
 	}
+
+	// Rate limiting: max 10 messages/minute
+	t.mu.Lock()
+	now := time.Now()
+	// Prune old entries
+	var recent []time.Time
+	oneMinuteAgo := now.Add(-1 * time.Minute)
+	for _, entry := range t.entries {
+		if entry.After(oneMinuteAgo) {
+			recent = append(recent, entry)
+		}
+	}
+	t.entries = recent
+
+	if len(t.entries) >= 10 {
+		t.mu.Unlock()
+		return fmt.Errorf("telegram rate limit exceeded (max 10 msgs/min)")
+	}
+	t.entries = append(t.entries, now)
+	t.mu.Unlock()
 
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", t.token)
 
