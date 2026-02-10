@@ -59,3 +59,27 @@ func TestSpinner(t *testing.T) {
 		t.Error("spinner frame is empty")
 	}
 }
+
+func TestShortenModelName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"Claude Opus 3.5 (Thinking)", "Opus 3.5 (T)"},
+		{"Claude Sonnet 3.5", "Sonnet 3.5"},
+		{"Gemini 1.5 Flash", "Gem 1.5 Flash"},
+		{"Model (Thinking)", "Model (T)"},
+		{"Model (Low)", "Model (L)"},
+		{"Model (Medium)", "Model (M)"},
+		{"Model (High)", "Model (H)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := shortenModelName(tt.input)
+			if got != tt.expected {
+				t.Errorf("shortenModelName(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}

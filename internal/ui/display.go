@@ -12,7 +12,13 @@ import (
 	"github.com/gundamkid/anti-gravity-quota/internal/models"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"golang.org/x/term"
 )
+
+// DisplayOptions controls how quota information is displayed
+type DisplayOptions struct {
+	Compact bool
+}
 
 // ClearTerminal clears the terminal screen
 func ClearTerminal() {
@@ -30,7 +36,7 @@ func DisplayQuotaSummaryJSON(summary *models.QuotaSummary) error {
 }
 
 // DisplayQuotaSummary displays quota information in a formatted table
-func DisplayQuotaSummary(summary *models.QuotaSummary) {
+func DisplayQuotaSummary(summary *models.QuotaSummary, opts DisplayOptions) {
 	// Header
 	fmt.Println()
 	color.Cyan("  ✨ Anti-Gravity Quota Status")
@@ -67,11 +73,20 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 	style.Color.Separator = text.Colors{text.FgCyan}
 	t.SetStyle(style)
 
-	t.AppendHeader(table.Row{"Model", "Quota", "Reset In", "Status"})
+	if opts.Compact {
+		t.AppendHeader(table.Row{"Model", "Quota", "Reset In"})
+	} else {
+		t.AppendHeader(table.Row{"Model", "Quota", "Reset In", "Status"})
+	}
 
 	for _, model := range models {
 		if model.DisplayName == "" {
 			continue
+		}
+
+		displayName := model.DisplayName
+		if opts.Compact {
+			displayName = shortenModelName(displayName)
 		}
 
 		percentage := model.GetRemainingPercentage()
@@ -107,12 +122,20 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 			statusColor = text.Colors{text.FgHiBlack}
 		}
 
-		t.AppendRow(table.Row{
-			model.DisplayName,
-			quotaColor.Sprint(quotaStr),
-			formatResetTime(model, summary.FetchedAt),
-			statusColor.Sprint(statusStr),
-		})
+		if opts.Compact {
+			t.AppendRow(table.Row{
+				displayName,
+				quotaColor.Sprint(quotaStr),
+				formatResetTime(model, summary.FetchedAt),
+			})
+		} else {
+			t.AppendRow(table.Row{
+				displayName,
+				quotaColor.Sprint(quotaStr),
+				formatResetTime(model, summary.FetchedAt),
+				statusColor.Sprint(statusStr),
+			})
+		}
 	}
 
 	// Indent the table slightly for better look
@@ -126,7 +149,11 @@ func DisplayQuotaSummary(summary *models.QuotaSummary) {
 	if summary.DefaultModelID != "" {
 		for _, model := range models {
 			if model.ModelID == summary.DefaultModelID {
-				color.Cyan("  ⭐ Default Model: %s", model.DisplayName)
+				displayName := model.DisplayName
+				if opts.Compact {
+					displayName = shortenModelName(displayName)
+				}
+				color.Cyan("  ⭐ Default Model: %s", displayName)
 				break
 			}
 		}
@@ -224,7 +251,7 @@ func DisplayAllAccountsQuotaJSON(results []*AccountQuotaResult) error {
 }
 
 // DisplayAllAccountsQuota displays quota for all accounts in a formatted table
-func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
+func DisplayAllAccountsQuota(results []*AccountQuotaResult, opts DisplayOptions) {
 	if len(results) == 0 {
 		color.Yellow("No accounts to display")
 		return
@@ -277,11 +304,20 @@ func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
 		style.Color.Separator = text.Colors{text.FgCyan}
 		t.SetStyle(style)
 
-		t.AppendHeader(table.Row{"Model", "Quota", "Reset In", "Status"})
+		if opts.Compact {
+			t.AppendHeader(table.Row{"Model", "Quota", "Reset In"})
+		} else {
+			t.AppendHeader(table.Row{"Model", "Quota", "Reset In", "Status"})
+		}
 
 		for _, model := range models {
 			if model.DisplayName == "" {
 				continue
+			}
+
+			displayName := model.DisplayName
+			if opts.Compact {
+				displayName = shortenModelName(displayName)
 			}
 
 			percentage := model.GetRemainingPercentage()
@@ -317,12 +353,20 @@ func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
 				statusColor = text.Colors{text.FgHiBlack}
 			}
 
-			t.AppendRow(table.Row{
-				model.DisplayName,
-				quotaColor.Sprint(quotaStr),
-				formatResetTime(model, result.QuotaSummary.FetchedAt),
-				statusColor.Sprint(statusStr),
-			})
+			if opts.Compact {
+				t.AppendRow(table.Row{
+					displayName,
+					quotaColor.Sprint(quotaStr),
+					formatResetTime(model, result.QuotaSummary.FetchedAt),
+				})
+			} else {
+				t.AppendRow(table.Row{
+					displayName,
+					quotaColor.Sprint(quotaStr),
+					formatResetTime(model, result.QuotaSummary.FetchedAt),
+					statusColor.Sprint(statusStr),
+				})
+			}
 		}
 
 		// Indent the table
@@ -331,6 +375,27 @@ func DisplayAllAccountsQuota(results []*AccountQuotaResult) {
 		fmt.Println(indented)
 		fmt.Println()
 	}
+}
+
+// shortenModelName reduces model name length for compact mode
+func shortenModelName(name string) string {
+	name = strings.ReplaceAll(name, "Claude ", "")
+	name = strings.ReplaceAll(name, "Gemini ", "Gem ")
+	name = strings.ReplaceAll(name, "(Thinking)", "(T)")
+	name = strings.ReplaceAll(name, "(thinking)", "(T)")
+	name = strings.ReplaceAll(name, "(Low)", "(L)")
+	name = strings.ReplaceAll(name, "(Medium)", "(M)")
+	name = strings.ReplaceAll(name, "(High)", "(H)")
+	return name
+}
+
+// GetTerminalWidth returns the width of the terminal
+func GetTerminalWidth() int {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return 80 // Default fallback
+	}
+	return width
 }
 
 // DisplayWatchHeader displays the header for watch mode
