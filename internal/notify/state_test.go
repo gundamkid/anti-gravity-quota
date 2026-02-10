@@ -93,4 +93,21 @@ func TestStateTracker(t *testing.T) {
 			t.Errorf("expected INITIAL status after reset, got %s", changes[0].OldStatus)
 		}
 	})
+
+	t.Run("Skip Empty Names", func(t *testing.T) {
+		tracker.Reset()
+		quotas := []models.ModelQuota{
+			{DisplayName: "", RemainingFraction: 0.1},
+			{DisplayName: "valid-model", RemainingFraction: 0.5},
+		}
+
+		changes := tracker.Update(email, quotas)
+
+		if len(changes) != 1 {
+			t.Errorf("expected 1 change, got %d", len(changes))
+		}
+		if changes[0].DisplayName != "valid-model" {
+			t.Errorf("expected valid-model, got %s", changes[0].DisplayName)
+		}
+	})
 }

@@ -57,6 +57,9 @@ func (t *StateTracker) Update(accountEmail string, quotas []models.ModelQuota) [
 
 	for _, q := range quotas {
 		displayName := q.DisplayName
+		if displayName == "" {
+			continue
+		}
 		newStatus := q.GetStatusString()
 		newPercentage := q.GetRemainingPercentage()
 		oldStatus, exists := t.lastStatus[accountEmail][displayName]

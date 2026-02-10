@@ -136,4 +136,41 @@ func TestMessageFormatter(t *testing.T) {
 			t.Error("body missing headers")
 		}
 	})
+
+	t.Run("Alphabetical Sorting", func(t *testing.T) {
+		changes := []StatusChange{
+			{
+				Account:       "user@gmail.com",
+				DisplayName:   "Z-Model",
+				NewStatus:     "HEALTHY",
+				NewPercentage: 100,
+			},
+			{
+				Account:       "user@gmail.com",
+				DisplayName:   "A-Model",
+				NewStatus:     "HEALTHY",
+				NewPercentage: 100,
+			},
+			{
+				Account:       "user@gmail.com",
+				DisplayName:   "M-Model",
+				NewStatus:     "HEALTHY",
+				NewPercentage: 100,
+			},
+		}
+
+		msg := formatter.FormatChanges(changes)
+
+		aIdx := strings.Index(msg.Body, "A-Model")
+		mIdx := strings.Index(msg.Body, "M-Model")
+		zIdx := strings.Index(msg.Body, "Z-Model")
+
+		if aIdx == -1 || mIdx == -1 || zIdx == -1 {
+			t.Fatal("models missing from body")
+		}
+
+		if !(aIdx < mIdx && mIdx < zIdx) {
+			t.Errorf("models not sorted alphabetically: A-Model(%d), M-Model(%d), Z-Model(%d)", aIdx, mIdx, zIdx)
+		}
+	})
 }

@@ -2,6 +2,7 @@ package notify
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -76,6 +77,12 @@ func (f *MessageFormatter) FormatChanges(changes []StatusChange) Message {
 			}
 
 			sb.WriteString(fmt.Sprintf("  %s\n", f.getStatusHeader(status)))
+
+			// Sort models alphabetically A-Z
+			sort.Slice(items, func(i, j int) bool {
+				return items[i].DisplayName < items[j].DisplayName
+			})
+
 			for _, c := range items {
 				// Base line: - Model Name | X%
 				line := fmt.Sprintf("    - %s | %d%%", c.DisplayName, c.NewPercentage)
