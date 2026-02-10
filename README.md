@@ -2,335 +2,156 @@
 
 A lightweight CLI tool to monitor your Anti-Gravity (Claude Code) AI model quota and usage in real-time.
 
-## Features
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/gundamkid/anti-gravity-quota/blob/master/LICENSE)
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/doc/devel/release.html)
 
-- ✅ **Check Quota** - View quota for all AI models (Claude 4 Opus/Sonnet, Gemini 3 Flash/Pro)
-- � **Multiple Accounts** - Support for multiple Google accounts with easy switching
-- �🔐 **Secure Auth** - Google OAuth2 with PKCE flow
-- 📊 **Pretty Output** - Colored tables with visual progress bars
-- 🔄 **Auto-Refresh** - Automatic token refresh when expired
-- ⏳ **Watch Mode** - Monitor quota in real-time with periodic refreshes
-- 📝 **JSON Output** - Machine-readable format for scripting
-- ⚡ **Fast & Simple** - Single binary, no dependencies
+## ✨ Features
 
-## Installation
+- ✅ **Quota Monitoring** - Real-time tracking for Claude 3.5/4 and Gemini 1.5/2.5/3 models.
+- 👤 **Multi-Account Support** - Manage multiple Google accounts with seamless switching.
+- 🔐 **Secure OAuth2** - Enterprise-grade authentication using PKCE flow.
+- 📊 **Visual Dashboard** - Beautiful terminal tables with status indicators.
+- 🔄 **Real-time Notifications** - Telegram alerts when quotas change or hit critical levels.
+- ⏳ **Watch Mode** - Passive monitoring with configurable refresh intervals.
+- 📉 **Display Modes** - Automatic compact mode for small terminals or forced modes via flags.
+- 📝 **Developer Friendly** - JSON output for easy integration and automation.
 
+## 🚀 Installation
+
+### Using Go
 ```bash
-# Build from source
-go build -o ag-quota ./cmd/ag-quota
-
-# Or install directly
 go install github.com/gundamkid/anti-gravity-quota/cmd/ag-quota@latest
 ```
 
-## Quick Start
+### From Source
+```bash
+git clone https://github.com/gundamkid/anti-gravity-quota.git
+cd anti-gravity-quota
+make build
+# Binary will be available as ./ag-quota
+```
+
+## 🚥 Quick Start
+
+1. **Login** to your account:
+   ```bash
+   ag-quota login
+   ```
+2. **Check quota** immediately:
+   ```bash
+   ag-quota
+   ```
+3. **Enable Notifications** (Telegram):
+   ```bash
+   ag-quota config set-telegram --token "BOT_TOKEN" --chat-id "CHAT_ID"
+   ```
+4. **Monitor all accounts** in real-time:
+   ```bash
+   ag-quota quota --all --watch=5
+   ```
+
+---
+
+## 📖 Usage Guide
+
+### 1. Checking Quota
+
+Display quota information for models. The tool detects your terminal size and chooses the best display mode automatically.
 
 ```bash
-# Login with Google account
-ag-quota login
+# Standard view (default account)
+$ ag-quota
 
-# Check quota for default account
-ag-quota
+# View specific account
+$ ag-quota quota --account user@gmail.com
 
+# Aggregate view for ALL accounts
+$ ag-quota quota --all
+
+# Force display modes
+$ ag-quota --compact      # Force minimal table
+$ ag-quota --no-compact   # Force full detailed table
+```
+
+**Status Indicators:**
+- ✅ **HEALTHY** - Above 50% remaining.
+- ⚠️ **WARNING** - 21% to 50% remaining.
+- ⛔ **CRITICAL** - 1% to 20% remaining.
+- ❌ **EMPTY** - Quota exhausted.
+
+### 2. Account Management
+
+Securely manage multiple Google sessions.
+
+```bash
 # List all saved accounts
 ag-quota accounts list
 
 # Switch default account
 ag-quota accounts switch user@gmail.com
 
-# Check quota for all accounts at once
-ag-quota quota --all
+# Remove an account session
+ag-quota accounts remove old@user.com
 ```
 
-## Usage
+### 3. Watch Mode & Notifications
 
-### Check Quota
-
-Display quota information for all AI models:
-
-```bash
-$ ag-quota
-
-  ✨ Anti-Gravity Quota Status
-
-  Account: user@example.com
-  Project: my-project-123456
-  Fetched: 2026-01-26 07:45:23 UTC
-
-  ┌────────────────────────┬───────┬──────────┬─────────────┐
-  │ Model                  │ Quota │ Reset In │ Status      │
-  ├────────────────────────┼───────┼──────────┼─────────────┤
-  │ Claude 4 Opus          │  85%  │ 4h 23m   │ ✓ HEALTHY   │
-  │ Claude 4 Sonnet        │ 100%  │ 5h 0m    │ ✓ HEALTHY   │
-  │ Gemini 3 Flash         │   0%  │ 2h 15m   │ ✗ EMPTY     │
-  │ Gemini 3 Pro           │  25%  │ 3h 45m   │ ⚠ WARNING   │
-  │ Gemini 3 Pro (Legacy)  │  15%  │ 1h 10m   │ ⚡ CRITICAL  │
-  └────────────────────────┴───────┴──────────┴─────────────┘
-
-  ⭐ Default Model: Claude 4 Sonnet
-```
-
-- **✓ HEALTHY** (green) - Quota above 50%
-- **⚠ WARNING** (yellow) - Quota between 21% and 50%
-- **⚡ CRITICAL** (red) - Quota between 1% and 20%
-- **✗ EMPTY** (gray) - Quota exhausted (0%)
-
-### Watch Mode
-
-Monitor your quota in real-time with automatic refreshes. The terminal will clear and update periodically.
+Stay updated without manual refreshes.
 
 ```bash
 # Watch with default 5-minute interval
 ag-quota --watch
 
-# Watch with custom interval (e.g., every 10 minutes)
-# Note: Use '=' to specify a value for flags with optional defaults
-ag-quota --watch=10
-
-# Use short flag with '='
-ag-quota -w=2
+# Custom interval (e.g., every 2 minutes)
+# Note: Use '=' for custom values (e.g., --watch=2)
+ag-quota --watch=2
 ```
 
-**Note:**
-- **Flag Syntax**: Because `--watch` has an optional default value, you **must** use the `=` sign to provide a custom value (e.g., `--watch=10` or `-w=2`). Using a space (e.g., `--watch 10`) will result in the default 5-minute interval being used, as the value will be treated as a separate argument.
-- **Global Flags**: All quota flags (`--watch`, `--json`, `--all`, `--account`) are available globally and can be used directly with the `ag-quota` command.
-- **Minimum Interval**: 1 minute.
-- **Conflict**: `--watch` cannot be used with `--json`.
+> [!TIP]
+> **Telegram Setup**: For step-by-step instructions on setting up your notification bot, see the [Telegram Setup Guide](docs/telegram-setup.md).
 
-### Multi-Account Support
-
-Check quota for a specific account:
+### 4. Configuration & Testing
 
 ```bash
-ag-quota quota --account user@gmail.com
+# Test your notification settings with dummy data
+ag-quota config test-notify
+
+# View current Telegram status
+ag-quota config get-telegram
 ```
 
-Check quota for **all** saved accounts at once:
+---
 
-```bash
-ag-quota quota --all
-```
-
-### Account Management
-
-Manage your saved Google accounts:
-
-```bash
-# List all saved accounts
-ag-quota accounts list
-
-# Set the default account
-ag-quota accounts default user@gmail.com
-
-# Quickly switch between accounts (alias for default)
-ag-quota accounts switch another@gmail.com
-
-# Remove an account
-ag-quota accounts remove old@user.com
-```
+## 🛠️ Integration
 
 ### JSON Output
-
-Get machine-readable output for scripting:
-
-```bash
-$ ag-quota --json
-# or
-$ ag-quota quota --json
-
-{
-  "Email": "user@example.com",
-  "ProjectID": "my-project-123456",
-  "Models": [
-    {
-      "ModelID": "claude-sonnet-4-5",
-      "DisplayName": "Claude 4 Sonnet",
-      "Label": "Claude 4 Sonnet",
-      "Provider": "claude",
-      "RemainingFraction": 0.85,
-      "ResetTime": "2026-01-26T12:00:00Z",
-      "IsExhausted": false
-    }
-  ],
-  "DefaultModelID": "claude-sonnet-4-5",
-  "FetchedAt": "2026-01-26T07:45:23Z"
-}
-```
-
-### Login
-
-Authenticate with your Google account:
+Perfect for custom scripts, status bars, or automation.
 
 ```bash
-$ ag-quota login
-
-Starting authentication flow...
-
-Opening browser for authentication...
-If browser doesn't open, visit this URL:
-https://accounts.google.com/o/oauth2/v2/auth?...
-
-Login successful!
-Logged in as: user@example.com
+$ ag-quota --json | jq '.Models[] | select(.IsExhausted == true)'
 ```
 
-### Check Status
+---
 
-View current authentication status:
+## 📁 Technical Overview
 
-```bash
-$ ag-quota status
+- **Storage**: Auth tokens and config are stored in `~/.config/ag-quota/` (Linux/macOS) with `0600` permissions.
+- **Auto-Refresh**: Tokens are automatically refreshed before expiration.
+- **Retry Logic**: Built-in exponential backoff for API resilience.
+- **Documentation**: 
+  - [Technical Details](docs/technical.md)
+  - [Build & CI/CD Flow](docs/build-flow.md)
 
-Authentication Status
-====================
+---
 
-✓ Logged in as: user@example.com
-✓ Token valid for: 58m
+## 🤝 Contributing
 
-Config directory: /home/user/.config/ag-quota
-```
+We welcome contributions! Please check the [Contributing Guide](CONTRIBUTING.md) to get started.
 
-### Logout
+## 📄 License
 
-Clear stored authentication tokens:
+MIT License - see [LICENSE](LICENSE) for details.
 
-```bash
-$ ag-quota logout
+---
 
-✓ Logged out successfully
-```
-
-## Commands
-
-| Command | Description | Flags |
-|---------|-------------|-------|
-| `ag-quota` | Check quota (default account) | `--json, --watch` |
-| `ag-quota quota` | Check quota | `--account, --all, --json, --watch` |
-| `ag-quota accounts list` | List all saved accounts | |
-| `ag-quota accounts default` | Set the default account | |
-| `ag-quota accounts switch` | Alias for `accounts default` | |
-| `ag-quota accounts remove` | Remove a saved account | |
-| `ag-quota login` | Authenticate with Google account | |
-| `ag-quota status` | Show authentication status | |
-| `ag-quota logout` | Clear stored tokens | |
-| `ag-quota --help` | Show help message | |
-| `ag-quota --version` | Show version information | |
-
-## Configuration
-
-Configuration files are stored in the following locations:
-
-- **Linux/WSL**: `~/.config/ag-quota/`
-  - Token: `~/.config/ag-quota/token.json`
-- **macOS**: `~/.config/ag-quota/` (or `~/Library/Application Support/ag-quota/`)
-  - Token: `~/.config/ag-quota/token.json`
-
-**Token File Permissions:**
-- Token files are stored with `0600` permissions (owner read/write only)
-- Never commit token files to version control
-
-**Environment Variables:**
-- `XDG_CONFIG_HOME` - Override default config directory (Linux/macOS)
-
-## How It Works
-
-1. **Authentication**: Uses Google OAuth2 with PKCE flow for secure authentication
-2. **Token Storage**: Stores OAuth tokens locally with automatic refresh
-3. **API Integration**: Calls Google Cloud Code API endpoints:
-   - `POST /v1internal:loadCodeAssist` - Retrieves project information
-   - `POST /v1internal:fetchAvailableModels` - Fetches model quotas
-4. **Display**: Formats and displays quota information with visual indicators
-
-## API Details
-
-**Base URL:** `https://cloudcode-pa.googleapis.com`
-
-**Authentication:**
-- OAuth2 with PKCE (Proof Key for Code Exchange)
-- Client ID: Public Google Cloud Code extension client
-- Scopes: `openid email profile cloud-platform`
-
-**Rate Limiting:**
-- Automatic retry with exponential backoff
-- Max 3 retry attempts for failed requests
-
-## Requirements
-
-- Go 1.21+ (for building from source)
-- Internet connection
-- Google account with Anti-Gravity (Claude Code) access
-## Troubleshooting
-
-### "Not logged in" error
-
-Run `ag-quota login` to authenticate with your Google account.
-
-### Token expired
-
-Tokens are automatically refreshed. If you see auth errors, try:
-```bash
-ag-quota logout
-ag-quota login
-```
-
-### API errors or rate limiting
-
-The tool implements automatic retry with exponential backoff. If you consistently see errors:
-- Check your internet connection
-- Verify your Google account has Anti-Gravity access
-- Wait a few minutes if rate limited
-
-### Browser doesn't open during login
-
-If the browser doesn't open automatically, copy and paste the URL shown in the terminal.
-
-## Development
-
-### Building
-
-```bash
-# Build for current platform
-make build
-# or
-go build -o ag-quota ./cmd/ag-quota
-```
-
-### Testing
-
-```bash
-# Run all tests
-make test
-# or
-go test -v ./...
-```
-
-### Project Structure
-
-```
-anti-gravity-quota/
-├── cmd/ag-quota/       # CLI entry point
-├── internal/
-│   ├── api/           # Cloud Code API client
-│   ├── auth/          # OAuth2 authentication
-│   ├── config/        # Configuration management
-│   ├── models/        # Data models
-│   └── ui/            # Display formatting
-├── docs/              # Documentation
-│   ├── build-flow.md  # Build and CI/CD flow
-│   └── technical.md   # API & Technical details
-└── README.md
-```
-
-## Credits
-
-Inspired by [antigravity-usage](https://github.com/skainguyen1412/antigravity-usage) by skainguyen1412.
-
-Built with:
-- [cobra](https://github.com/spf13/cobra) - CLI framework
-- [color](https://github.com/fatih/color) - Colored terminal output
-- [oauth2](https://golang.org/x/oauth2) - OAuth2 client
-- [go-pretty](https://github.com/jedib0t/go-pretty) - Table output
-
-## License
-
-MIT License - see LICENSE file for details
+**Built with ❤️ for the Anti-Gravity Community.**
