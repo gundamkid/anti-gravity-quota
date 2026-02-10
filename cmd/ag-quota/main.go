@@ -183,9 +183,15 @@ func fetchAndDisplayQuota(ctx context.Context, triggerNotify bool) {
 	// Display results
 	if jsonOutput {
 		if allFlag {
-			ui.DisplayAllAccountsQuotaJSON(finalResults)
+			if err := ui.DisplayAllAccountsQuotaJSON(finalResults); err != nil {
+				fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
+				os.Exit(1)
+			}
 		} else if len(finalResults) > 0 {
-			ui.DisplayQuotaSummaryJSON(finalResults[0].QuotaSummary)
+			if err := ui.DisplayQuotaSummaryJSON(finalResults[0].QuotaSummary); err != nil {
+				fmt.Fprintf(os.Stderr, "Error displaying JSON: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	} else {
 		if allFlag {
@@ -232,28 +238,6 @@ func fetchQuotaForAccountResult(ctx context.Context, email string) (*ui.AccountQ
 		Email:        email,
 		QuotaSummary: quotaInfo,
 	}, nil
-}
-
-// runQuotaForAccount fetches and displays quota for a specific account
-func runQuotaForAccount(ctx context.Context, email string) {
-	res, err := fetchQuotaForAccountResult(ctx, email)
-	if err != nil {
-		if ctx.Err() == nil {
-			if jsonOutput {
-				fmt.Fprintf(os.Stderr, `{"error": "failed to fetch quota", "account": "%s", "message": "%s"}%s`, email, err.Error(), "\n")
-			} else {
-				ui.DisplayError(fmt.Sprintf("Failed to fetch quota for %s", email), err)
-			}
-			os.Exit(1)
-		}
-		return
-	}
-
-	if jsonOutput {
-		ui.DisplayQuotaSummaryJSON(res.QuotaSummary)
-	} else {
-		ui.DisplayQuotaSummary(res.QuotaSummary)
-	}
 }
 
 // runQuotaForAllAccounts fetches and returns quota for all saved accounts

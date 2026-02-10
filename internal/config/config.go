@@ -182,7 +182,7 @@ func SaveConfig(cfg *Config) error {
 		return err
 	}
 
-	if _, err := EnsureConfigDir(); err != nil {
+	if _, err = EnsureConfigDir(); err != nil {
 		return err
 	}
 
