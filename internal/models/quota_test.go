@@ -12,27 +12,60 @@ func TestModelQuota_GetStatusString(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "Exhausted",
+			name: "Exhausted (Flag)",
 			quota: ModelQuota{
 				IsExhausted: true,
 			},
 			expected: "EMPTY",
 		},
 		{
-			name: "Low quota",
+			name: "Exhausted (Fraction)",
 			quota: ModelQuota{
-				IsExhausted:       false,
-				RemainingFraction: 0.05,
+				RemainingFraction: 0,
 			},
-			expected: "LOW",
+			expected: "EMPTY",
 		},
 		{
-			name: "OK quota",
+			name: "Critical quota (10%)",
 			quota: ModelQuota{
-				IsExhausted:       false,
+				RemainingFraction: 0.1,
+			},
+			expected: "CRITICAL",
+		},
+		{
+			name: "Critical quota (20%)",
+			quota: ModelQuota{
+				RemainingFraction: 0.2,
+			},
+			expected: "CRITICAL",
+		},
+		{
+			name: "Warning quota (25%)",
+			quota: ModelQuota{
+				RemainingFraction: 0.25,
+			},
+			expected: "WARNING",
+		},
+		{
+			name: "Warning quota (50%)",
+			quota: ModelQuota{
 				RemainingFraction: 0.5,
 			},
-			expected: "OK",
+			expected: "WARNING",
+		},
+		{
+			name: "Healthy quota (60%)",
+			quota: ModelQuota{
+				RemainingFraction: 0.6,
+			},
+			expected: "HEALTHY",
+		},
+		{
+			name: "Healthy quota (100%)",
+			quota: ModelQuota{
+				RemainingFraction: 1.0,
+			},
+			expected: "HEALTHY",
 		},
 	}
 

@@ -57,21 +57,23 @@ $ ag-quota
   Project: my-project-123456
   Fetched: 2026-01-26 07:45:23 UTC
 
-  ┌────────────────────────┬───────┬──────────┬──────────┐
-  │ Model                  │ Quota │ Reset In │ Status   │
-  ├────────────────────────┼───────┼──────────┼──────────┤
-  │ Claude 4 Opus          │  85%  │ 4h 23m   │ ✓ OK     │
-  │ Claude 4 Sonnet        │ 100%  │ 5h 0m    │ ✓ OK     │
-  │ Gemini 3 Flash         │   0%  │ 2h 15m   │ ✗ EMPTY  │
-  │ Gemini 3 Pro           │  50%  │ 3h 45m   │ ✓ OK     │
-  └────────────────────────┴───────┴──────────┴──────────┘
+  ┌────────────────────────┬───────┬──────────┬─────────────┐
+  │ Model                  │ Quota │ Reset In │ Status      │
+  ├────────────────────────┼───────┼──────────┼─────────────┤
+  │ Claude 4 Opus          │  85%  │ 4h 23m   │ ✓ HEALTHY   │
+  │ Claude 4 Sonnet        │ 100%  │ 5h 0m    │ ✓ HEALTHY   │
+  │ Gemini 3 Flash         │   0%  │ 2h 15m   │ ✗ EMPTY     │
+  │ Gemini 3 Pro           │  25%  │ 3h 45m   │ ⚠ WARNING   │
+  │ Gemini 3 Pro (Legacy)  │  15%  │ 1h 10m   │ ⚡ CRITICAL  │
+  └────────────────────────┴───────┴──────────┴─────────────┘
 
   ⭐ Default Model: Claude 4 Sonnet
 ```
 
-- ✓ OK (green) - Quota above 10%
-- ⚠ LOW (yellow) - Quota at or below 10%
-- ✗ EMPTY (red) - Quota exhausted
+- **✓ HEALTHY** (green) - Quota above 50%
+- **⚠ WARNING** (yellow) - Quota between 21% and 50%
+- **⚡ CRITICAL** (red) - Quota between 1% and 20%
+- **✗ EMPTY** (gray) - Quota exhausted (0%)
 
 ### Watch Mode
 
