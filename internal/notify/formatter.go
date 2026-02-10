@@ -53,7 +53,31 @@ func (f *MessageFormatter) FormatChanges(changes []StatusChange) Message {
 
 		sb.WriteString(f.getStatusHeader(status) + "\n")
 		for _, c := range cmds {
-			sb.WriteString(fmt.Sprintf("• %s: %s (from %s)\n", c.DisplayName, c.NewStatus, c.OldStatus))
+			// Detail line: Model Name: New%
+			line := fmt.Sprintf("• %s: %d%%", c.DisplayName, c.NewPercentage)
+
+			// Delta section: (Old% → New% (↓X%))
+			if c.OldStatus != "UNKNOWN" {
+				delta := c.NewPercentage - c.OldPercentage
+				arrow := "↑"
+				if delta < 0 {
+					arrow = "↓"
+					delta = -delta
+				}
+				if delta != 0 {
+					line += fmt.Sprintf(" (%d%% %s %d%% (%s%d%%))", c.OldPercentage, arrow, c.NewPercentage, arrow, delta)
+				}
+			}
+
+			// Reset time section
+			if (status == "EMPTY" || status == "CRITICAL") && !c.ResetTime.IsZero() {
+				remaining := time.Until(c.ResetTime)
+				if remaining > 0 {
+					line += fmt.Sprintf(" - Reset in %s", FormatTimeRemaining(remaining))
+				}
+			}
+
+			sb.WriteString(line + "\n")
 			if c.Account != "" {
 				sb.WriteString(fmt.Sprintf("  └ Account: %s\n", c.Account))
 			}

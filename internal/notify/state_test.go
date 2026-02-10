@@ -2,6 +2,7 @@ package notify
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gundamkid/anti-gravity-quota/internal/models"
 )
@@ -9,11 +10,12 @@ import (
 func TestStateTracker(t *testing.T) {
 	tracker := NewStateTracker()
 	email := "test@example.com"
+	resetTime := time.Now().Add(1 * time.Hour)
 
 	t.Run("First Fetch - Baseline", func(t *testing.T) {
 		quotas := []models.ModelQuota{
-			{DisplayName: "claude-3-opus", RemainingFraction: 1.0},  // HEALTHY
-			{DisplayName: "gemini-1.5-pro", RemainingFraction: 0.1}, // CRITICAL
+			{DisplayName: "claude-3-opus", RemainingFraction: 1.0},                        // HEALTHY
+			{DisplayName: "gemini-1.5-pro", RemainingFraction: 0.1, ResetTime: resetTime}, // CRITICAL
 		}
 
 		changes := tracker.Update(email, quotas)
@@ -25,12 +27,18 @@ func TestStateTracker(t *testing.T) {
 		if changes[0].DisplayName != "gemini-1.5-pro" || changes[0].NewStatus != "CRITICAL" {
 			t.Errorf("unexpected change: %+v", changes[0])
 		}
+		if changes[0].NewPercentage != 10 {
+			t.Errorf("expected 10%%, got %d%%", changes[0].NewPercentage)
+		}
+		if !changes[0].ResetTime.Equal(resetTime) {
+			t.Error("reset time not set")
+		}
 	})
 
 	t.Run("Second Fetch - No Change", func(t *testing.T) {
 		quotas := []models.ModelQuota{
 			{DisplayName: "claude-3-opus", RemainingFraction: 1.0},
-			{DisplayName: "gemini-1.5-pro", RemainingFraction: 0.1},
+			{DisplayName: "gemini-1.5-pro", RemainingFraction: 0.1, ResetTime: resetTime},
 		}
 
 		changes := tracker.Update(email, quotas)
@@ -59,6 +67,9 @@ func TestStateTracker(t *testing.T) {
 				claudeFound = true
 				if c.OldStatus != "HEALTHY" || c.NewStatus != "WARNING" {
 					t.Errorf("unexpected claude change: %+v", c)
+				}
+				if c.OldPercentage != 100 || c.NewPercentage != 40 {
+					t.Errorf("unexpected percentages: old=%d, new=%d", c.OldPercentage, c.NewPercentage)
 				}
 			}
 		}
