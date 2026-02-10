@@ -440,6 +440,7 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(logoutCmd)
+	rootCmd.AddCommand(configCmd)
 
 	// Add flags to root asPersistentFlags so they are available to subcommands and when running root directly
 	rootCmd.PersistentFlags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
