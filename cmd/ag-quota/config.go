@@ -6,6 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/gundamkid/anti-gravity-quota/internal/config"
+	"github.com/gundamkid/anti-gravity-quota/internal/notify"
 	"github.com/gundamkid/anti-gravity-quota/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -36,6 +37,19 @@ var setTelegramCmd = &cobra.Command{
 
 		updated := false
 		if telegramToken != "" {
+			// Validate token before saving
+			tn := cfg.Notifications.Telegram
+			tn.BotToken = telegramToken
+
+			tNotifier := notify.NewTelegramNotifier(tn.BotToken, "")
+			fmt.Print("Validating Telegram Bot Token... ")
+			if err := tNotifier.Validate(cmd.Context()); err != nil {
+				fmt.Println(color.RedString("FAILED"))
+				ui.DisplayError("Invalid Telegram token", err)
+				os.Exit(1)
+			}
+			fmt.Println(color.GreenString("OK"))
+
 			cfg.Notifications.Telegram.BotToken = telegramToken
 			updated = true
 		}
