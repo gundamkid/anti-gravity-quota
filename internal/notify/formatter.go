@@ -29,8 +29,19 @@ func (f *MessageFormatter) FormatChanges(changes []StatusChange) Message {
 		}
 	}
 
+	// Detect if this is an initial summary
+	isInitial := false
+	for _, c := range changes {
+		if c.OldStatus == "INITIAL" {
+			isInitial = true
+			break
+		}
+	}
+
 	title := "[AG-Quota] Status Update"
-	if len(changes) == 1 {
+	if isInitial {
+		title = "[AG-Quota] Initial Quota Summary"
+	} else if len(changes) == 1 {
 		title = fmt.Sprintf("[AG-Quota] %s: %s", changes[0].DisplayName, changes[0].NewStatus)
 	}
 
@@ -57,7 +68,7 @@ func (f *MessageFormatter) FormatChanges(changes []StatusChange) Message {
 			line := fmt.Sprintf("• %s: %d%%", c.DisplayName, c.NewPercentage)
 
 			// Delta section: (Old% → New% (↓X%))
-			if c.OldStatus != "UNKNOWN" {
+			if c.OldStatus != "UNKNOWN" && c.OldStatus != "INITIAL" {
 				delta := c.NewPercentage - c.OldPercentage
 				arrow := "↑"
 				if delta < 0 {
@@ -116,7 +127,7 @@ func (f *MessageFormatter) getStatusHeader(status string) string {
 	case "WARNING":
 		return "⚠️ *WARNING*"
 	case "HEALTHY":
-		return "✅ *RECOVERED*"
+		return "✅ *HEALTHY*"
 	default:
 		return "*" + status + "*"
 	}

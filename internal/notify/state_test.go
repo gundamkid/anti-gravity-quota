@@ -12,7 +12,7 @@ func TestStateTracker(t *testing.T) {
 	email := "test@example.com"
 	resetTime := time.Now().Add(1 * time.Hour)
 
-	t.Run("First Fetch - Baseline", func(t *testing.T) {
+	t.Run("First Fetch - Baseline Summary", func(t *testing.T) {
 		quotas := []models.ModelQuota{
 			{DisplayName: "claude-3-opus", RemainingFraction: 1.0},                        // HEALTHY
 			{DisplayName: "gemini-1.5-pro", RemainingFraction: 0.1, ResetTime: resetTime}, // CRITICAL
@@ -20,18 +20,19 @@ func TestStateTracker(t *testing.T) {
 
 		changes := tracker.Update(email, quotas)
 
-		// Should only notify the non-healthy model
-		if len(changes) != 1 {
-			t.Errorf("expected 1 change, got %d", len(changes))
+		// Should notify ALL models on first fetch for initial summary
+		if len(changes) != 2 {
+			t.Errorf("expected 2 changes, got %d", len(changes))
 		}
-		if changes[0].DisplayName != "gemini-1.5-pro" || changes[0].NewStatus != "CRITICAL" {
-			t.Errorf("unexpected change: %+v", changes[0])
+
+		// Check statuses
+		if changes[0].OldStatus != "INITIAL" || changes[1].OldStatus != "INITIAL" {
+			t.Error("expected INITIAL old status on first fetch")
 		}
-		if changes[0].NewPercentage != 10 {
-			t.Errorf("expected 10%%, got %d%%", changes[0].NewPercentage)
-		}
-		if !changes[0].ResetTime.Equal(resetTime) {
-			t.Error("reset time not set")
+
+		// Second change should be the gemini one (order preserved)
+		if changes[1].DisplayName != "gemini-1.5-pro" || changes[1].NewStatus != "CRITICAL" {
+			t.Errorf("unexpected second change: %+v", changes[1])
 		}
 	})
 
@@ -84,9 +85,12 @@ func TestStateTracker(t *testing.T) {
 			{DisplayName: "claude-3-opus", RemainingFraction: 0.4},
 		}
 		changes := tracker.Update(email, quotas)
-		// Should treat as first fetch again
+		// Should treat as first fetch again, returning the model
 		if len(changes) != 1 {
-			t.Error("expected baseline notification after reset")
+			t.Errorf("expected 1 baseline notification after reset, got %d", len(changes))
+		}
+		if changes[0].OldStatus != "INITIAL" {
+			t.Errorf("expected INITIAL status after reset, got %s", changes[0].OldStatus)
 		}
 	})
 }

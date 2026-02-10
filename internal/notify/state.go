@@ -63,17 +63,15 @@ func (t *StateTracker) Update(accountEmail string, quotas []models.ModelQuota) [
 		oldPercentage := t.lastPercentage[accountEmail][displayName]
 
 		if isFirst {
-			// On first fetch, notify if not HEALTHY
-			if newStatus != "HEALTHY" {
-				changes = append(changes, StatusChange{
-					Account:       accountEmail,
-					DisplayName:   displayName,
-					OldStatus:     "UNKNOWN",
-					NewStatus:     newStatus,
-					NewPercentage: newPercentage,
-					ResetTime:     q.ResetTime,
-				})
-			}
+			// On first fetch, notify always (baseline summary)
+			changes = append(changes, StatusChange{
+				Account:       accountEmail,
+				DisplayName:   displayName,
+				OldStatus:     "INITIAL",
+				NewStatus:     newStatus,
+				NewPercentage: newPercentage,
+				ResetTime:     q.ResetTime,
+			})
 		} else if exists && oldStatus != newStatus {
 			// Status changed
 			changes = append(changes, StatusChange{

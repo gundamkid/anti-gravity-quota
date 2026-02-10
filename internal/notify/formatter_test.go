@@ -90,11 +90,45 @@ func TestMessageFormatter(t *testing.T) {
 		if !strings.Contains(msg.Body, "🔴 *CRITICAL*") {
 			t.Error("body should contain critical header")
 		}
-		if !strings.Contains(msg.Body, "✅ *RECOVERED*") {
-			t.Error("body should contain recovered header")
+		if !strings.Contains(msg.Body, "✅ *HEALTHY*") {
+			t.Error("body should contain healthy header")
 		}
 		if !strings.Contains(msg.Body, "Account: acc1@gmail.com") {
 			t.Error("body should contain account email")
+		}
+	})
+
+	t.Run("Initial Summary", func(t *testing.T) {
+		changes := []StatusChange{
+			{
+				Account:       "user@gmail.com",
+				DisplayName:   "Gemini 1.5 Flash",
+				OldStatus:     "INITIAL",
+				NewStatus:     "HEALTHY",
+				NewPercentage: 100,
+			},
+			{
+				Account:       "user@gmail.com",
+				DisplayName:   "Claude 3.5 Sonnet",
+				OldStatus:     "INITIAL",
+				NewStatus:     "CRITICAL",
+				NewPercentage: 5,
+			},
+		}
+
+		msg := formatter.FormatChanges(changes)
+
+		if msg.Title != "[AG-Quota] Initial Quota Summary" {
+			t.Errorf("wrong title for initial summary: %s", msg.Title)
+		}
+		if strings.Contains(msg.Body, "INITIAL") {
+			t.Error("body should not contain INITIAL sentinel")
+		}
+		if strings.Contains(msg.Body, "→") || strings.Contains(msg.Body, "↓") {
+			t.Error("body should not show deltas for initial summary")
+		}
+		if !strings.Contains(msg.Body, "🔴 *CRITICAL*") || !strings.Contains(msg.Body, "✅ *HEALTHY*") {
+			t.Error("body missing headers")
 		}
 	})
 }
