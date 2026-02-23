@@ -1,4 +1,4 @@
-.PHONY: build clean test install help release changelog
+.PHONY: build clean test install help release changelog browser-up browser-down
 
 # Build variables
 APP_NAME := ag-quota
@@ -74,5 +74,16 @@ help:
 	@echo "  run       - Build and run"
 	@echo "  fmt       - Format code"
 	@echo "  lint      - Lint code"
-	@echo "  changelog - Generate CHANGELOG.md from commits"
-	@echo "  help      - Show this help message"
+	@echo "  changelog    - Generate CHANGELOG.md from commits"
+	@echo "  browser-up   - Start browser in background for agent debugging"
+	@echo "  browser-down - Stop the background browser"
+	@echo "  help         - Show this help message"
+
+# Browser management
+browser-up:
+	@./scripts/setup_browser.sh
+
+browser-down:
+	@echo "Stopping browser..."
+	@pkill -f "remote-debugging-port=9222" || true
+	@echo "✓ Stopped"
