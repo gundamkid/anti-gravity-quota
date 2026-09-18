@@ -3,7 +3,7 @@
 A lightweight CLI tool to monitor your Anti-Gravity (Claude Code) AI model quota and usage in real-time.
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/gundamkid/anti-gravity-quota/blob/master/LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/doc/devel/release.html)
+[![Go Version](https://img.shields.io/badge/Go-1.25.1+-00ADD8?style=flat&logo=go)](https://golang.org/doc/devel/release.html)
 
 ## ✨ Features
 
